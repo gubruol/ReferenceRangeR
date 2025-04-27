@@ -5,7 +5,7 @@ Built in R with the Shiny framework, the tool enables users to analyze up to 200
 It provides automated data cleaning, visualization, and analysis. Sex-based differences are visualized using violin and boxplots, while statistical significance is assessed via ANOVA. Age stratification is guided by an iterative algorithm that merges age groups based on minimal median deviation within a user-defined number of bins, compared against dataset-derived uncertainty thresholds. The application is accessible via a public web interface and offers a Docker-based installation for secure, local deployment.
 
 ### Screenshot
-![grafik](https://github.com/user-attachments/assets/5f4f91eb-efa9-4098-b5b4-c29891ae32da)
+![grafik](https://github.com/user-attachments/assets/a199916e-dea0-4bd4-8651-87ec6b57a31f)
 
 ## Homepage (Demo)
 https://kc.uol.de/referenceranger/
@@ -14,3 +14,4 @@ https://kc.uol.de/referenceranger/
 ```
 docker run -d -p 80:3838 --name referenceranger gubruol/referenceranger:latest
 ```
+Access the tool at http://localhost
