@@ -10,8 +10,17 @@ It provides automated data cleaning, visualization, and analysis. Sex-based diff
 ## Homepage (Demo)
 https://kc.uol.de/referenceranger/
 
-## Installation (Docker)
+## Docker Installation
+You can run ReferenceRangeR locally using Docker. This setup is recommended for secure, isolated deployment. Note: Only supported on x64 (Intel/AMD) platforms. Not compatible with ARM-based systems like Raspberry Pi.
+### Prerequisites
+[Install Docker](https://docs.docker.com/get-started/) for your operating system.
+
+### Start the App
+Open a terminal or command prompt and run:
 ```
 docker run -d -p 80:3838 --name referenceranger gubruol/referenceranger:latest
 ```
-Access the tool at http://localhost
+This will download the latest Docker image und map the container to local port 80.
+
+### Access the App
+Open you Browser an access the tool at http://localhost
