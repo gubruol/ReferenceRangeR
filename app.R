@@ -51,6 +51,28 @@ if (Sys.info()["sysname"] == "Windows") {
   source("/srv/shiny-server/referenceranger/TML.R")
 }
 
+tableformat <- "function (instance, td, row, col, prop, value, cellProperties) {
+          Handsontable.renderers.TextRenderer.apply(this, arguments);
+          
+          if (col === 0 && value != null && typeof value === 'string') {
+            if (!isNaN(Number(value))) {
+              td.style.background = 'white';
+              td.style.color = 'black';
+            } else if (value.startsWith('<')) {
+              td.style.background = '#d0e7ff';   // Light blue
+              td.style.color = 'darkblue';
+            } else {
+              td.style.background = '#ffcccc';   // Light red
+              td.style.color = 'darkred';
+            }
+          } else {
+            td.style.background = 'white';
+            td.style.color = 'black';
+          }
+          return td;
+        }"
+
+
 # Function for plotting the RI limits for comparison
 plotcomparisonlimits <- function (estimatedlimits.low, estimatedlimits.high, referencelimits.low, referencelimits.high) {
   pU <- permissible_uncertainty(referencelimits.low, referencelimits.high)
@@ -70,7 +92,7 @@ plotcomparisonlimits <- function (estimatedlimits.low, estimatedlimits.high, ref
 ui <-
   dashboardPage(
     dashboardHeader(title = tags$span("ReferenceRangeR", class = "header-title")),
-
+    
     dashboardSidebar(
       tags$head(
         tags$style(HTML("
@@ -106,67 +128,67 @@ ui <-
       ),
       use_theme(uoltheme),
       tags$div(class = "sidebar-scroll",
-      sidebarMenu(
-        br(),
-        div(img(src = 'rrr.webp', width = '110px'), style = 'text-align: center;'),
-        menuItem(tags$div(
-         style = "text-align:center; font-size: 0.8em; font-style: italic;",
-         tags$a(href = "https://kc.uol.de/referenceranger/help.pdf", "help", target = "_blank"),
-         "  |  ",
-         tags$a(href = "https://github.com/gubruol/ReferenceRangeR/", "github", target = "_blank"),
-         "  |  ",
-         tags$a(href = "https://kc.uol.de/disclaimer/", "disclaimer", target = "_blank")
-        )),
-        br(),
-        menuItem("select sex", startExpanded = FALSE,
+               sidebarMenu(
                  br(),
-                 actionButton("sexbox", HTML("visualize data"), style = buttoncolors1, width = '100%'),
-                 radioButtons("sexradio", "", c("all" = "A", "male" = "M", "female" = "F", "non-binary" = "D")),
-                 conditionalPanel(condition = "output.pregnancymode == 1", radioButtons("trimester", "", c("1. trimester" = 1, "2. trimester" = 2, "3. trimester" = 3))),
-                 br(),
-                 conditionalPanel(condition = "output.pregnancymode != 1", actionButton("pregnancy_button", HTML("add trimester column"), style = buttoncolors2, width = '90%')),
-                 br()
-        ),
-        menuItem("select age", startExpanded = FALSE,
-                 br(),
-                 HTML("<div style='text-align:center;width:100%;font-size:80%'><i>from / to</i></div>"),
-                 fluidRow(column(6, numericInput("agell", NULL, "0")), column(6, numericInput("ageul", NULL, "0"))),
-                 actionButton("drift", HTML("drift check"), style = buttoncolors1, width = '100%'),
-                 conditionalPanel(condition = "output.showstratslider != '0'", sliderInput("stratnum", "preferred no. of groups", min = 2, max = 12, value = 3, step = 1,ticks = FALSE)),
-                 br()
-        ),
-        menuItem("select method", startExpanded = FALSE,
-                 radioButtons("methodradio", "", choiceNames = list(
-                   HTML("<b>RefineR</b> <a href = 'https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8346497/pdf/41598_2021_Article_95301.pdf'>(Lit.)</a>"),
-                   HTML("<b>TMC</b> <a href = 'https://www.degruyter.com/document/doi/10.1515/cclm-2018-1341/html'>(Lit.)</a>"),
-                   HTML("<b>TML</b> <a href = 'https://www.degruyter.com/document/doi/10.1515/CCLM.2007.249/html'>(Lit.)</a>"),
-                   HTML("<b>kosmic</b> <a href = 'https://www.nature.com/articles/s41598-020-58749-2'>(Lit.)</a>"),
-                   HTML("<b>reflimR</b> <a href = 'https://doi.org/10.1515/labmed-2023-0042'>(Lit.)</a>")
-                 ),
-                 choiceValues = list("refiner", "tmc", "tml", "kosmic", "reflimr")
-                 ),
-                 conditionalPanel(condition = "input.methodradio == 'tml'", checkboxInput(
-                   "fasttml", HTML("Fast mode <i style = 'font-size:80%;'>(3 significant figures)</i>"),
-                   value = TRUE
+                 div(img(src = 'rrr.webp', width = '110px'), style = 'text-align: center;'),
+                 menuItem(tags$div(
+                   style = "text-align:center; font-size: 0.8em; font-style: italic;",
+                   tags$a(href = "https://kc.uol.de/referenceranger/help.pdf", "help", target = "_blank"),
+                   "  |  ",
+                   tags$a(href = "https://github.com/gubruol/ReferenceRangeR/", "github", target = "_blank"),
+                   "  |  ",
+                   tags$a(href = "https://kc.uol.de/disclaimer/", "disclaimer", target = "_blank")
                  )),
-                 br()
-        ),
-        menuItem("select limits for comparison", startExpanded = FALSE,
-                 HTML("<br><div style='text-align:center;width:100%;font-size:80%'><i>lower limit / upper limit </i>"),
-                 fluidRow(
-                   column(6, numericInput("referencelimits.low", NULL, "0.0", step = 0.1)),
-                   column(6, numericInput("referencelimits.high", NULL, "0.0", step = 0.1))),
-                 HTML("<div style='text-align:center;width:100%;font-size:80%'>Permissible uncertainty <a href = 'https://www.degruyter.com/document/doi/10.1515/cclm-2014-0874/html'>(Lit.1 </a> and <a href = 'https://doi.org/10.1515/labmed-2023-0042'>Lit.2)</a></div>"),
-                 br()
-        ),
-        br(),
-        actionButton("calc", HTML("<b>calculate</b>"), style = buttoncolors1, width = '100%'),
-        br(),
-        div(style = "display: flex; justify-content: space-between;",
-            actionButton("clear", "clear data", style = buttoncolors2, width = '100%'),
-            actionButton("demo", "demo data", style = buttoncolors2, style = 'margin-right: 10px;', width = '100%'))
-        
-      )
+                 br(),
+                 menuItem("select sex", startExpanded = FALSE,
+                          br(),
+                          actionButton("sexbox", HTML("visualize data"), style = buttoncolors1, width = '100%'),
+                          radioButtons("sexradio", "", c("all" = "A", "male" = "M", "female" = "F", "non-binary" = "D")),
+                          conditionalPanel(condition = "output.pregnancymode == 1", radioButtons("trimester", "", c("1. trimester" = 1, "2. trimester" = 2, "3. trimester" = 3))),
+                          br(),
+                          conditionalPanel(condition = "output.pregnancymode != 1", actionButton("pregnancy_button", HTML("add trimester column"), style = buttoncolors2, width = '90%')),
+                          br()
+                 ),
+                 menuItem("select age", startExpanded = FALSE,
+                          br(),
+                          HTML("<div style='text-align:center;width:100%;font-size:80%'><i>from / to</i></div>"),
+                          fluidRow(column(6, numericInput("agell", NULL, "0")), column(6, numericInput("ageul", NULL, "0"))),
+                          actionButton("drift", HTML("drift check"), style = buttoncolors1, width = '100%'),
+                          conditionalPanel(condition = "output.showstratslider != '0'", sliderInput("stratnum", "preferred no. of groups", min = 2, max = 12, value = 3, step = 1,ticks = FALSE)),
+                          br()
+                 ),
+                 menuItem("select method", startExpanded = FALSE,
+                          radioButtons("methodradio", "", choiceNames = list(
+                            HTML("<b>RefineR</b> <a href = 'https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8346497/pdf/41598_2021_Article_95301.pdf'>(Lit.)</a>"),
+                            HTML("<b>TMC</b> <a href = 'https://www.degruyter.com/document/doi/10.1515/cclm-2018-1341/html'>(Lit.)</a>"),
+                            HTML("<b>TML</b> <a href = 'https://www.degruyter.com/document/doi/10.1515/CCLM.2007.249/html'>(Lit.)</a>"),
+                            HTML("<b>kosmic</b> <a href = 'https://www.nature.com/articles/s41598-020-58749-2'>(Lit.)</a>"),
+                            HTML("<b>reflimR</b> <a href = 'https://doi.org/10.1515/labmed-2023-0042'>(Lit.)</a>")
+                          ),
+                          choiceValues = list("refiner", "tmc", "tml", "kosmic", "reflimr")
+                          ),
+                          conditionalPanel(condition = "input.methodradio == 'tml'", checkboxInput(
+                            "fasttml", HTML("Fast mode <i style = 'font-size:80%;'>(3 significant figures)</i>"),
+                            value = TRUE
+                          )),
+                          br()
+                 ),
+                 menuItem("select limits for comparison", startExpanded = FALSE,
+                          HTML("<br><div style='text-align:center;width:100%;font-size:80%'><i>lower limit / upper limit </i>"),
+                          fluidRow(
+                            column(6, numericInput("referencelimits.low", NULL, "0.0", step = 0.1)),
+                            column(6, numericInput("referencelimits.high", NULL, "0.0", step = 0.1))),
+                          HTML("<div style='text-align:center;width:100%;font-size:80%'>Permissible uncertainty <a href = 'https://www.degruyter.com/document/doi/10.1515/cclm-2014-0874/html'>(Lit.1 </a> and <a href = 'https://doi.org/10.1515/labmed-2023-0042'>Lit.2)</a></div>"),
+                          br()
+                 ),
+                 br(),
+                 actionButton("calc", HTML("<b>calculate</b>"), style = buttoncolors1, width = '100%'),
+                 br(),
+                 div(style = "display: flex; justify-content: space-between;",
+                     actionButton("clear", "clear data", style = buttoncolors2, width = '100%'),
+                     actionButton("demo", "demo data", style = buttoncolors2, style = 'margin-right: 10px;', width = '100%'))
+                 
+               )
       ),
       tags$div(class = "sidebar-image",
                tags$img(src = "umo.svg"))
@@ -183,9 +205,9 @@ ui <-
 server <- function(input, output, session) {
   setwd(tempdir())
   dataframe = data.frame(result = rep(NA, tablesize), age = rep(NA, tablesize), sex = factor(rep(NA, tablesize), levels = sexlist))
-  dataframe$result = as.numeric(dataframe$result)
+  dataframe$result = as.character(dataframe$result)
   dataframe$age = as.numeric(dataframe$age)
-  output$table <- renderRHandsontable(rhandsontable(dataframe, width = '100%', height = 550, stretchH = "all", rowHeaderWidth = 65))
+  output$table <- renderRHandsontable(rhandsontable(dataframe, width = '100%', height = 550, stretchH = "all", rowHeaderWidth = 65) %>% hot_cols(renderer = tableformat))
   
   output$showstratslider <- renderText({ 
     '0'
@@ -204,8 +226,8 @@ server <- function(input, output, session) {
   # Clear data and table
   observeEvent(input$clear, {
     dataframe = data.frame(result = rep(NA, tablesize), age = rep(NA, tablesize), sex = factor(rep(NA, tablesize), levels = sexlist))
-    dataframe$result = as.numeric(dataframe$result)
     dataframe$age = as.numeric(dataframe$age)
+    dataframe$result = as.character(dataframe$result)
     updateNumericInput(session, "referencelimits.low", value = 0)
     updateNumericInput(session, "referencelimits.high", value = 0)
     updateNumericInput(session, "agell", value = "")
@@ -214,7 +236,7 @@ server <- function(input, output, session) {
     output$pregnancymode <- renderText({ '0' })
     if (input$boxtable$collapsed) updateBox("boxtable", action = "toggle")
     if (!input$boxplot$collapsed) updateBox("boxplot", action = "toggle")
-    output$table <- renderRHandsontable(rhandsontable(dataframe, width = '100%', height = 550, stretchH = "all", rowHeaderWidth = 65))
+    output$table <- renderRHandsontable(rhandsontable(dataframe, width = '100%', height = 550, stretchH = "all", rowHeaderWidth = 65) %>% hot_cols(renderer = tableformat))
   })
   
   # Generate demo data
@@ -232,6 +254,7 @@ server <- function(input, output, session) {
     dataframe$result[(1 + 3 * pathsize):(8 * pathsize)] <- SSlogis(dataframe$age[(1 + 3 * pathsize):(8 * pathsize)], 5, 60, 6) + rnorm(5 * pathsize, 50, 4.5)
     dataframe$result[(1 + 8 * pathsize):(10 * pathsize)] <- SSlogis(dataframe$age[(1 + 8 * pathsize):(10 * pathsize)], 5, 60, 6) + rnorm(2 * pathsize, 60, 10)
     dataframe$result <- round(dataframe$result, 2)
+    dataframe$result = as.character(dataframe$result)
     updateNumericInput(session, "referencelimits.low", value = 30)
     updateNumericInput(session, "referencelimits.high", value = 45)
     updateNumericInput(session, "agell", value = 18)
@@ -240,13 +263,13 @@ server <- function(input, output, session) {
     output$pregnancymode <- renderText({ '0' })
     if (input$boxtable$collapsed) updateBox("boxtable", action = "toggle")
     if (!input$boxplot$collapsed) updateBox("boxplot", action = "toggle")
-    output$table <- renderRHandsontable(rhandsontable(dataframe, width = '100%', height = 550, stretchH = "all", rowHeaderWidth = 65))
+    output$table <- renderRHandsontable(rhandsontable(dataframe, width = '100%', height = 550, stretchH = "all", rowHeaderWidth = 65) %>% hot_cols(renderer = tableformat))
   })
   
   # Add trimester column
   observeEvent(input$pregnancy_button, {
     dataframe = data.frame(result = rep(NA, tablesize), age = rep(NA, tablesize), sex = factor(rep(NA, tablesize), levels = sexlist), trimester = factor(rep(NA, tablesize), levels = c(1, 2, 3)))
-    dataframe$result = as.numeric(dataframe$result)
+    dataframe$result = as.character(dataframe$result)
     dataframe$age = as.numeric(dataframe$age)
     updateNumericInput(session, "referencelimits.low", value = 0)
     updateNumericInput(session, "referencelimits.high", value = 0)
@@ -256,7 +279,7 @@ server <- function(input, output, session) {
     output$pregnancymode <- renderText({ '1' })
     if (input$boxtable$collapsed) updateBox("boxtable", action = "toggle")
     if (!input$boxplot$collapsed) updateBox("boxplot", action = "toggle")
-    output$table <- renderRHandsontable(rhandsontable(dataframe, width = '100%', height = 550, stretchH = "all", rowHeaderWidth = 65))
+    output$table <- renderRHandsontable(rhandsontable(dataframe, width = '100%', height = 550, stretchH = "all", rowHeaderWidth = 65) %>% hot_cols(renderer = tableformat))
   })
   
   # Visualize data for sex differences
@@ -449,6 +472,10 @@ server <- function(input, output, session) {
   # Start calculation
   observeEvent(input$calc, {
     dataframe = hot_to_r(input$table)
+    methodradio <- isolate(input$methodradio)
+    dataframe$result <- gsub(",", ".", dataframe$result, fixed = TRUE)
+    dataframe$age <- gsub(",", ".", dataframe$age, fixed = TRUE)
+    if (methodradio == 'tmc') dataframe$result <- gsub("^<", "", dataframe$result)
     dataframe$result <- as.numeric(dataframe$result)
     dataframe <- dataframe[dataframe$result > 0, ]
     dataframe <- dataframe[!is.na(dataframe$result), ]
@@ -466,7 +493,6 @@ server <- function(input, output, session) {
     referencelimitsvalid <- (referencelimits.high > 0 && (referencelimits.high > referencelimits.low) && !is.na(referencelimits.low) && !is.na(referencelimits.high))  
     estimatedlimits.low <- 0
     estimatedlimits.high <- 0
-    methodradio <- isolate(input$methodradio)
     if (length(na.omit(dataframe$result)) < 500) shinyalert("insufficient data...", paste("The selected dataset contains ", length(na.omit(dataframe$result)), " results.\nPlease increase the sample size (minimum n=500)."), type = "error")
     else {
       if (length(na.omit(dataframe$result)) < 2000) shinyalert("small sample size...", paste("The selected dataset contains only ", length(dataframe$result), " results.\nYou have been warned..."), type = "warning")
