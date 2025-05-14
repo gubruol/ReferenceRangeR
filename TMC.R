@@ -118,7 +118,7 @@ irep <- 0
 iage <- 0
 igtab <- 0
 subset.type <- 0
-round.unit <- 1
+round.unit <- 0.1
 xlabel <- NULL
 detect.limits.max <- NA
 spalte.g <- NA
