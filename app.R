@@ -55,7 +55,7 @@ tableformat <- "function (instance, td, row, col, prop, value, cellProperties) {
           Handsontable.renderers.TextRenderer.apply(this, arguments);
           
           if (col === 0 && value != null && typeof value === 'string') {
-            if (!isNaN(Number(value))) {
+              if (!isNaN(Number(value.replace(',', '.')))) {
               td.style.background = 'white';
               td.style.color = 'black';
             } else if (value.startsWith('<')) {
