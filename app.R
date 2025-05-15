@@ -51,26 +51,15 @@ if (Sys.info()["sysname"] == "Windows") {
   source("/srv/shiny-server/referenceranger/TML.R")
 }
 
-tableformat <- "function (instance, td, row, col, prop, value, cellProperties) {
-          Handsontable.renderers.TextRenderer.apply(this, arguments);
-          
-          if (col === 0 && value != null && typeof value === 'string') {
-              if (!isNaN(Number(value.replace(',', '.')))) {
-              td.style.background = 'white';
-              td.style.color = 'black';
-            } else if (value.startsWith('<')) {
-              td.style.background = '#d0e7ff';   // Light blue
-              td.style.color = 'darkblue';
-            } else {
-              td.style.background = '#ffcccc';   // Light red
-              td.style.color = 'darkred';
-            }
-          } else {
-            td.style.background = 'white';
-            td.style.color = 'black';
-          }
-          return td;
-        }"
+resultvalidator <- "function(value, callback) {
+  setTimeout(function() {
+   if (value === null || value === '') {
+    callback(true);
+   } else {
+    var regex = /^<?\\d+(?:[\\.,]\\d+)?$/;
+    callback(regex.test(value.trim()));
+   }
+  }, 100);}"
 
 
 # Function for plotting the RI limits for comparison
@@ -159,7 +148,7 @@ ui <-
                  ),
                  menuItem("select method", startExpanded = FALSE,
                           radioButtons("methodradio", "", choiceNames = list(
-                            HTML("<b>RefineR</b> <a href = 'https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8346497/pdf/41598_2021_Article_95301.pdf'>(Lit.)</a>"),
+                            HTML("<b>refineR</b> <a href = 'https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8346497/pdf/41598_2021_Article_95301.pdf'>(Lit.)</a>"),
                             HTML("<b>TMC</b> <a href = 'https://www.degruyter.com/document/doi/10.1515/cclm-2018-1341/html'>(Lit.)</a>"),
                             HTML("<b>TML</b> <a href = 'https://www.degruyter.com/document/doi/10.1515/CCLM.2007.249/html'>(Lit.)</a>"),
                             HTML("<b>kosmic</b> <a href = 'https://www.nature.com/articles/s41598-020-58749-2'>(Lit.)</a>"),
@@ -207,7 +196,7 @@ server <- function(input, output, session) {
   dataframe = data.frame(result = rep(NA, tablesize), age = rep(NA, tablesize), sex = factor(rep(NA, tablesize), levels = sexlist))
   dataframe$result = as.character(dataframe$result)
   dataframe$age = as.numeric(dataframe$age)
-  output$table <- renderRHandsontable(rhandsontable(dataframe, width = '100%', height = 550, stretchH = "all", rowHeaderWidth = 65) %>% hot_cols(renderer = tableformat))
+  output$table <- renderRHandsontable(rhandsontable(dataframe, width = '100%', height = 550, stretchH = "all", rowHeaderWidth = 65) %>% hot_col("result", validator = resultvalidator))
   
   output$showstratslider <- renderText({ 
     '0'
@@ -236,7 +225,7 @@ server <- function(input, output, session) {
     output$pregnancymode <- renderText({ '0' })
     if (input$boxtable$collapsed) updateBox("boxtable", action = "toggle")
     if (!input$boxplot$collapsed) updateBox("boxplot", action = "toggle")
-    output$table <- renderRHandsontable(rhandsontable(dataframe, width = '100%', height = 550, stretchH = "all", rowHeaderWidth = 65) %>% hot_cols(renderer = tableformat))
+    output$table <- renderRHandsontable(rhandsontable(dataframe, width = '100%', height = 550, stretchH = "all", rowHeaderWidth = 65) %>% hot_col("result", validator = resultvalidator))
   })
   
   # Generate demo data
@@ -245,7 +234,7 @@ server <- function(input, output, session) {
     dataframe$result = as.numeric(dataframe$result)
     dataframe$age = as.numeric(dataframe$age)
     demosamplesize <- tablesize * 0.5
-    dataframe$age[1:demosamplesize] <- runif(demosamplesize, min = 1, max = 99)
+    dataframe$age[1:demosamplesize] <- round(runif(demosamplesize, min = 1, max = 99), digits = 2)
     dataframe$sex[1:demosamplesize] <- factor(sample(c("M", "F"), demosamplesize, replace = TRUE), levels = sexlist)
     dataframe$result[1:demosamplesize] <- SSlogis(dataframe$age[1:demosamplesize], 5, 60, 6) + rnorm(demosamplesize, mean = 37.5, sd = 3.75)
     pathsize <- round(demosamplesize / 100, digits = 0) # 10% pathological values
@@ -263,7 +252,7 @@ server <- function(input, output, session) {
     output$pregnancymode <- renderText({ '0' })
     if (input$boxtable$collapsed) updateBox("boxtable", action = "toggle")
     if (!input$boxplot$collapsed) updateBox("boxplot", action = "toggle")
-    output$table <- renderRHandsontable(rhandsontable(dataframe, width = '100%', height = 550, stretchH = "all", rowHeaderWidth = 65) %>% hot_cols(renderer = tableformat))
+    output$table <- renderRHandsontable(rhandsontable(dataframe, width = '100%', height = 550, stretchH = "all", rowHeaderWidth = 65) %>% hot_col("result", validator = resultvalidator))
   })
   
   # Add trimester column
@@ -279,7 +268,7 @@ server <- function(input, output, session) {
     output$pregnancymode <- renderText({ '1' })
     if (input$boxtable$collapsed) updateBox("boxtable", action = "toggle")
     if (!input$boxplot$collapsed) updateBox("boxplot", action = "toggle")
-    output$table <- renderRHandsontable(rhandsontable(dataframe, width = '100%', height = 550, stretchH = "all", rowHeaderWidth = 65) %>% hot_cols(renderer = tableformat))
+    output$table <- renderRHandsontable(rhandsontable(dataframe, width = '100%', height = 550, stretchH = "all", rowHeaderWidth = 65) %>% hot_col("result", validator = resultvalidator))
   })
   
   # Visualize data for sex differences
@@ -576,7 +565,7 @@ server <- function(input, output, session) {
           else if (sexradio == 'D') "non-binary"
           else "no selection",
           "<br>Method: ",
-          if (methodradio == 'refiner') "RefineR"
+          if (methodradio == 'refiner') "refineR"
           else if (methodradio == 'TMC') "TMC"
           else if (methodradio == 'tml') "TML"
           else if (methodradio == 'kosmic') "kosmic"
