@@ -196,7 +196,10 @@ server <- function(input, output, session) {
   dataframe = data.frame(result = rep(NA, tablesize), age = rep(NA, tablesize), sex = factor(rep(NA, tablesize), levels = sexlist))
   dataframe$result = as.character(dataframe$result)
   dataframe$age = as.numeric(dataframe$age)
-  output$table <- renderRHandsontable(rhandsontable(dataframe, width = '100%', height = 550, stretchH = "all", rowHeaderWidth = 65) %>% hot_col("result", validator = resultvalidator))
+  output$table <- renderRHandsontable(rhandsontable(dataframe, width = '100%', height = 550, stretchH = "all", rowHeaderWidth = 65) %>%
+                                        hot_col("result", validator = resultvalidator) %>%
+                                        hot_col("sex", allowInvalid = TRUE)
+  )
   
   output$showstratslider <- renderText({ 
     '0'
@@ -225,7 +228,10 @@ server <- function(input, output, session) {
     output$pregnancymode <- renderText({ '0' })
     if (input$boxtable$collapsed) updateBox("boxtable", action = "toggle")
     if (!input$boxplot$collapsed) updateBox("boxplot", action = "toggle")
-    output$table <- renderRHandsontable(rhandsontable(dataframe, width = '100%', height = 550, stretchH = "all", rowHeaderWidth = 65) %>% hot_col("result", validator = resultvalidator))
+    output$table <- renderRHandsontable(rhandsontable(dataframe, width = '100%', height = 550, stretchH = "all", rowHeaderWidth = 65) %>%
+                                        hot_col("result", validator = resultvalidator) %>%
+                                        hot_col("sex", allowInvalid = TRUE)
+  )
   })
   
   # Generate demo data
@@ -252,7 +258,10 @@ server <- function(input, output, session) {
     output$pregnancymode <- renderText({ '0' })
     if (input$boxtable$collapsed) updateBox("boxtable", action = "toggle")
     if (!input$boxplot$collapsed) updateBox("boxplot", action = "toggle")
-    output$table <- renderRHandsontable(rhandsontable(dataframe, width = '100%', height = 550, stretchH = "all", rowHeaderWidth = 65) %>% hot_col("result", validator = resultvalidator))
+    output$table <- renderRHandsontable(rhandsontable(dataframe, width = '100%', height = 550, stretchH = "all", rowHeaderWidth = 65) %>%
+                                        hot_col("result", validator = resultvalidator) %>%
+                                        hot_col("sex", allowInvalid = TRUE)
+  )
   })
   
   # Add trimester column
@@ -268,7 +277,10 @@ server <- function(input, output, session) {
     output$pregnancymode <- renderText({ '1' })
     if (input$boxtable$collapsed) updateBox("boxtable", action = "toggle")
     if (!input$boxplot$collapsed) updateBox("boxplot", action = "toggle")
-    output$table <- renderRHandsontable(rhandsontable(dataframe, width = '100%', height = 550, stretchH = "all", rowHeaderWidth = 65) %>% hot_col("result", validator = resultvalidator))
+    output$table <- renderRHandsontable(rhandsontable(dataframe, width = '100%', height = 550, stretchH = "all", rowHeaderWidth = 65) %>%
+                                        hot_col("result", validator = resultvalidator) %>%
+                                        hot_col("sex", allowInvalid = TRUE)
+  )
   })
   
   # Visualize data for sex differences
