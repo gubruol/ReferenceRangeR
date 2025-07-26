@@ -294,7 +294,17 @@ server <- function(input, output, session) {
       ylim.min <- q10 - (q90 - q10) / 1.3
       ylim.max <- q90 + (q90 - q10) / 1.3
       pu_percent <- 2.39*(-0.25 + 100*(-1+exp(((log(reflim(dataframe$result)$limits[2])-log(reflim(dataframe$result)$limits[1]))/3.92)^2))^0.5)^0.5
-      anova <- round(unlist(summary(aov(result ~ sex, data = dataframe)))["Pr(>F)1"],2)
+      n_groups <- length(unique(dataframe$sex))
+      pvalue <- -1
+      test_used <- ""
+      if (n_groups == 2) {
+        pvalue <- round(wilcox.test(result ~ sex, data = dataframe)$p.value, 2)
+        test_used <- "Wilcoxon rank-sum test"
+      }
+      if (n_groups > 2) {
+        pvalue <- round(kruskal.test(result ~ sex, data = dataframe)$p.value, 2)
+        test_used <- "Kruskal-Wallis test"
+      }
       mediantable <- dataframe %>% group_by(sex) %>% summarise(count = n(), median = median(result, na.rm = TRUE))
       mediandiff <- round((max(mediantable$median) - min(mediantable$median)) / min(mediantable$median) * 100, digits = 2)
       output$plot <- renderPlot({
@@ -312,9 +322,10 @@ server <- function(input, output, session) {
               if (agelimitsvalid) paste("age: from ", agell, " to ", ageul)
               else "age: no selection",
               "<br><br>",
-              if (anova < 0.01) "<b style='color: red;'>Significant difference </b> (p<0.01 / one-way ANOVA)<br>"
-              else if (anova < 0.05) paste("<b style='color: red;'>Significant difference</b> (p =", anova, "/ one-way ANOVA)<br>")
-              else paste("<b style='color: #10D010;'>No significant difference</b> (p =", anova, "/ one-way ANOVA)<br>"),
+              if (pvalue < 0) "More than one group needed for statistical evaluation."
+              else if (pvalue < 0.01) paste("<b style='color: red;'>Significant difference </b> (p<0.01, ", test_used, ")<br>", sep = "")
+              else if (pvalue < 0.05) paste("<b style='color: red;'>Significant difference</b> (p=", pvalue, ", ", test_used, ")<br>", sep = "")
+              else paste("<b style='color: #10D010;'>No significant difference</b> (p=", pvalue, ", ", test_used, ")<br>", sep = ""),
               "<br><b>Max. deviation of the medians: </b> ",
               if (mediandiff > pu_percent) "<b style='color: red;'>"
               else if (mediandiff > (0.5 * pu_percent)) "<b style='color: orange;'>"
