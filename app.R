@@ -282,6 +282,7 @@ server <- function(input, output, session) {
                                         hot_col("sex", allowInvalid = TRUE)
   )
   })
+
   
   # Visualize data for sex differences
   observeEvent(input$sexbox, {
