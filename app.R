@@ -160,6 +160,10 @@ ui <-
                             "fasttml", HTML("Fast mode <i style = 'font-size:80%;'>(3 significant figures)</i>"),
                             value = TRUE
                           )),
+                          conditionalPanel(condition = "input.methodradio == 'refiner'",
+                                           checkboxInput("modboxcox", HTML("<i style = 'font-size:90%;'>use modified Box-Cox</i>"), value = FALSE),
+                                           sliderInput("nbootstrap", NULL, min=0, max=50, value=0, step=5, ticks=FALSE),
+                                           HTML("<div style = 'text-align:center;font-size:90%'><i>bootstrap iterations</i></div>")),
                           br()
                  ),
                  menuItem("select limits for comparison", startExpanded = FALSE,
@@ -199,7 +203,7 @@ server <- function(input, output, session) {
   output$table <- renderRHandsontable(rhandsontable(dataframe, width = '100%', height = 550, stretchH = "all", rowHeaderWidth = 65) %>%
                                         hot_col("result", validator = resultvalidator) %>%
                                         hot_col("sex", allowInvalid = TRUE)
-  )
+)
   
   output$showstratslider <- renderText({ 
     '0'
@@ -229,8 +233,8 @@ server <- function(input, output, session) {
     if (input$boxtable$collapsed) updateBox("boxtable", action = "toggle")
     if (!input$boxplot$collapsed) updateBox("boxplot", action = "toggle")
     output$table <- renderRHandsontable(rhandsontable(dataframe, width = '100%', height = 550, stretchH = "all", rowHeaderWidth = 65) %>%
-                                        hot_col("result", validator = resultvalidator) %>%
-                                        hot_col("sex", allowInvalid = TRUE)
+                                          hot_col("result", validator = resultvalidator) %>%
+                                          hot_col("sex", allowInvalid = TRUE)
   )
   })
   
@@ -259,8 +263,8 @@ server <- function(input, output, session) {
     if (input$boxtable$collapsed) updateBox("boxtable", action = "toggle")
     if (!input$boxplot$collapsed) updateBox("boxplot", action = "toggle")
     output$table <- renderRHandsontable(rhandsontable(dataframe, width = '100%', height = 550, stretchH = "all", rowHeaderWidth = 65) %>%
-                                        hot_col("result", validator = resultvalidator) %>%
-                                        hot_col("sex", allowInvalid = TRUE)
+                                          hot_col("result", validator = resultvalidator) %>%
+                                          hot_col("sex", allowInvalid = TRUE)
   )
   })
   
@@ -278,11 +282,11 @@ server <- function(input, output, session) {
     if (input$boxtable$collapsed) updateBox("boxtable", action = "toggle")
     if (!input$boxplot$collapsed) updateBox("boxplot", action = "toggle")
     output$table <- renderRHandsontable(rhandsontable(dataframe, width = '100%', height = 550, stretchH = "all", rowHeaderWidth = 65) %>%
-                                        hot_col("result", validator = resultvalidator) %>%
-                                        hot_col("sex", allowInvalid = TRUE)
+                                          hot_col("result", validator = resultvalidator) %>%
+                                          hot_col("sex", allowInvalid = TRUE)
   )
   })
-
+  
   
   # Visualize data for sex differences
   observeEvent(input$sexbox, {
@@ -509,13 +513,21 @@ server <- function(input, output, session) {
     referencelimitsvalid <- (referencelimits.high > 0 && (referencelimits.high > referencelimits.low) && !is.na(referencelimits.low) && !is.na(referencelimits.high))  
     estimatedlimits.low <- 0
     estimatedlimits.high <- 0
+    citext <- ""
     if (length(na.omit(dataframe$result)) < 500) shinyalert("insufficient data...", paste("The selected dataset contains ", length(na.omit(dataframe$result)), " results.\nPlease increase the sample size (minimum n=500)."), type = "error")
     else {
       if (length(na.omit(dataframe$result)) < 2000) shinyalert("small sample size...", paste("The selected dataset contains only ", length(dataframe$result), " results.\nYou have been warned..."), type = "warning")
       if (length(na.omit(dataframe$result)) > 100000) shinyalert("large sample size...", paste("The selected dataset contains ", length(dataframe$result), " results.\nYou have been warned..."), type = "warning")
       
       if (methodradio == 'refiner') {
-        resri <- findRI(na.omit(dataframe$result))
+        nbootstrap <- isolate(input$nbootstrap)
+        modboxcox <- isolate(input$modboxcox)
+        if (modboxcox) boxcoxmode <- "BoxCox"
+        else boxcoxmode <- "modBoxCox"
+        resri <- findRI(Data = na.omit(dataframe$result), model=boxcoxmode, NBootstrap=nbootstrap)
+        if (nbootstrap > 0) 
+          citext <- paste("95% confidence intervals: Lower limit (", round(getRI(resri)[1, 3], 2), " - ", round(getRI(resri)[1, 4], 2),
+                          ") - Upper limit ( ", round(getRI(resri)[2, 3], 2), " - ", round(getRI(resri)[2, 4], 2), ")<br>", sep="")
         estimatedlimits.low <- getRI(resri)[1, 2]
         estimatedlimits.high <- getRI(resri)[2, 2]
         output$plot <- renderPlot({
@@ -598,6 +610,7 @@ server <- function(input, output, session) {
           else if (methodradio == 'kosmic') "kosmic"
           else if (methodradio == 'reflimr') "reflimR",
           "<br><br><b>Estimated reference limits: ", estimatedlimits.lowtxt, " - ", estimatedlimits.hightxt, "</b><br>",
+          if (citext != "") citext,
           if (referencelimitsvalid) paste("<b style='color: #D0D0D0;'>Comparison reference limits: ", referencelimits.low.txt, " - ", referencelimits.high.txt, "</b><br>"),
           "</p>"
         )
