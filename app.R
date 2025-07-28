@@ -527,7 +527,7 @@ server <- function(input, output, session) {
         resri <- findRI(Data = na.omit(dataframe$result), model=boxcoxmode, NBootstrap=nbootstrap)
         if (nbootstrap > 0) 
           citext <- paste("95% confidence intervals: Lower limit (", round(getRI(resri)[1, 3], 2), " - ", round(getRI(resri)[1, 4], 2),
-                          ") - Upper limit / ", round(getRI(resri)[2, 3], 2), " - ", round(getRI(resri)[2, 4], 2), ")<br>", sep="")
+                          ") - Upper limit ( ", round(getRI(resri)[2, 3], 2), " - ", round(getRI(resri)[2, 4], 2), ")<br>", sep="")
         estimatedlimits.low <- getRI(resri)[1, 2]
         estimatedlimits.high <- getRI(resri)[2, 2]
         output$plot <- renderPlot({
