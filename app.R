@@ -358,7 +358,6 @@ server <- function(input, output, session) {
   observeEvent(input$drift, {
     dataframe = hot_to_r(input$table)
     dataframe$result <- gsub(",", ".", dataframe$result, fixed = TRUE)
-    dataframe$age <- gsub(",", ".", dataframe$age, fixed = TRUE)
     dataframe$result <- as.numeric(dataframe$result)
     dataframe <- dataframe[dataframe$result > 0, ]
     dataframe <- dataframe[!is.na(dataframe$result), ]
