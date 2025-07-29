@@ -46,10 +46,13 @@ tablesize <- 200000
 if (Sys.info()["sysname"] == "Windows") {
   source("Z:/R/kc.uol.de/referenceranger/TMC.R")
   source("Z:/R/kc.uol.de/referenceranger/TML.R")
-} else {
+} else if (Sys.info()["sysname"] == "Linux") {
   source("/srv/shiny-server/referenceranger/TMC.R")
   source("/srv/shiny-server/referenceranger/TML.R")
-}
+} else {
+  source("./referenceranger/TMC.R")
+  source("./referenceranger/TML.R")
+}  
 
 resultvalidator <- "function(value, callback) {
   setTimeout(function() {
