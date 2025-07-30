@@ -538,7 +538,7 @@ server <- function(input, output, session) {
         if (nbootstrap > 0) 
           citext <- paste("95% confidence intervals: Lower limit (", round(getRI(resri)[1, 3], 2), " - ", round(getRI(resri)[1, 4], 2),
                           ") - Upper limit ( ", round(getRI(resri)[2, 3], 2), " - ", round(getRI(resri)[2, 4], 2), ")<br>", sep="")
-        skewness <- paste("</p><br><p style='font-size: 12px;'>Skewness:", round(skewness(na.omit(dataframe$result)),2))
+        skewness <- paste("</p><br><p style='font-size: 12px;'>Estimated skewness:", round(skewness(na.omit(dataframe$result)),2))
         estimatedlimits.low <- getRI(resri)[1, 2]
         estimatedlimits.high <- getRI(resri)[2, 2]
         output$plot <- renderPlot({
