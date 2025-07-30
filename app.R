@@ -1,6 +1,7 @@
 library(admisc)
 library(date)
 library(dplyr)
+library(e1071)
 library(fresh)
 library(geoR)
 library(ggplot2)
@@ -522,6 +523,7 @@ server <- function(input, output, session) {
     estimatedlimits.low <- 0
     estimatedlimits.high <- 0
     citext <- ""
+    skewness <- ""
     if (length(na.omit(dataframe$result)) < 500) shinyalert("insufficient data...", paste("The selected dataset contains ", length(na.omit(dataframe$result)), " results.\nPlease increase the sample size (minimum n=500)."), type = "error")
     else {
       if (length(na.omit(dataframe$result)) < 2000) shinyalert("small sample size...", paste("The selected dataset contains only ", length(dataframe$result), " results.\nYou have been warned..."), type = "warning")
@@ -536,6 +538,7 @@ server <- function(input, output, session) {
         if (nbootstrap > 0) 
           citext <- paste("95% confidence intervals: Lower limit (", round(getRI(resri)[1, 3], 2), " - ", round(getRI(resri)[1, 4], 2),
                           ") - Upper limit ( ", round(getRI(resri)[2, 3], 2), " - ", round(getRI(resri)[2, 4], 2), ")<br>", sep="")
+        skewness <- paste("</p><br><p style='font-size: 12px;'>Skewness:", round(skewness(na.omit(dataframe$result)),2))
         estimatedlimits.low <- getRI(resri)[1, 2]
         estimatedlimits.high <- getRI(resri)[2, 2]
         output$plot <- renderPlot({
@@ -620,6 +623,7 @@ server <- function(input, output, session) {
           "<br><br><b>Estimated reference limits: ", estimatedlimits.lowtxt, " - ", estimatedlimits.hightxt, "</b><br>",
           if (citext != "") citext,
           if (referencelimitsvalid) paste("<b style='color: #D0D0D0;'>Comparison reference limits: ", referencelimits.low.txt, " - ", referencelimits.high.txt, "</b><br>"),
+          if (skewness != "") skewness,
           "</p>"
         )
       })
