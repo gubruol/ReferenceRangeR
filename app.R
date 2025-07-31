@@ -502,7 +502,6 @@ server <- function(input, output, session) {
     methodradio <- isolate(input$methodradio)
     dataframe$result <- gsub(",", ".", dataframe$result, fixed = TRUE)
     dataframe$age <- gsub(",", ".", dataframe$age, fixed = TRUE)
-    dataframe$result <- as.numeric(dataframe$result)
     dataframe$age <- as.numeric(dataframe$age)
     if (methodradio == 'tmc') dataframe$result <- gsub("^<", "", dataframe$result)
     dataframe$result <- as.numeric(dataframe$result)
