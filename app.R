@@ -206,7 +206,7 @@ ui <-
             collapsible = TRUE,
             collapsed = TRUE,
             status = "danger",
-            HTML("<div style='text-align:left;width:100%;font-size:100%'><r> Please initialize sex variables </r></div>"),
+            HTML("<div style='text-align:left;width:100%;font-size:100%'><i>Assign sex variables:</i></div>"),
             htmlOutput("Notification_init"),
             selectInput(
               "Init_female",
@@ -254,6 +254,7 @@ server <- function(input, output, session) {
   observeEvent(input$table, {
     dataframe = hot_to_r(input$table)
     input_sex= unique(dataframe$sex)
+
     updateSelectInput(
       session = getDefaultReactiveDomain(),
       inputId = "Init_female",
@@ -276,6 +277,8 @@ server <- function(input, output, session) {
       selected = "D"
     )
     updateBox("initbox", action = "toggle")
+    comparesexlist = c(femalelist, input$Init_female, malelist, input$Init_male, diverselist, input$Init_diverse, "", NA)
+    if (all(input_sex %in% comparesexlist) == FALSE) shinyalert("Check sex column variables...", "Please assign the data manually (data input - settings)...")
   })
 
     
