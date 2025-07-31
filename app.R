@@ -1,4 +1,5 @@
 library(admisc)
+library(bslib)
 library(date)
 library(dplyr)
 library(e1071)
@@ -40,7 +41,9 @@ buttoncolors2 <- "color: #000; background-color: #BBBBBB; border-color: #000;"
 # Variables
 malelist <- c('male', 'männlich', 'Mann', 'M', 'm')
 femalelist <- c('female', 'weiblich', 'Frau', 'F', 'f', 'W', 'w')
-sexlist <- c(malelist, femalelist, 'D', 'X')
+diverselist = c("D", "X")
+sexlist <- c(malelist, femalelist, diverselist)
+input_sex <- NULL
 tablesize <- 200000
 
 # Path for TMC and TML library
@@ -133,24 +136,21 @@ ui <-
                    tags$a(href = "https://kc.uol.de/disclaimer/", "disclaimer", target = "_blank")
                  )),
                  br(),
-                 menuItem("select sex", startExpanded = FALSE,
+                 menuItem("stratify / visualize", startExpanded = FALSE,
                           br(),
-                          actionButton("sexbox", HTML("visualize data"), style = buttoncolors1, width = '100%'),
-                          radioButtons("sexradio", "", c("all" = "A", "male" = "M", "female" = "F", "non-binary" = "D")),
+                          actionButton("sexbox", HTML("compare sex"), style = buttoncolors1, width = '100%'),
+                          actionButton("drift", HTML("age drift check"), style = buttoncolors1, width = '100%'),
+                          br(),
+                          HTML("<div style='text-align:center;width:100%;font-size:80%'><i>select sex</i></div>"),
+                          radioButtons("sexradio", NULL, c("all" = "A", "male" = "M", "female" = "F", "non-binary" = "D")),
+                          HTML("<div style='text-align:center;width:100%;font-size:80%'><i>select age (from/to)</i></div>"),
+                          fluidRow(column(6, numericInput("agell", NULL, "0")), column(6, numericInput("ageul", NULL, "0"))),
+                          conditionalPanel(condition = "output.showstratslider != '0'", sliderInput("stratnum", "preferred no. of groups", min = 2, max = 12, value = 3, step = 1,ticks = FALSE)),
                           conditionalPanel(condition = "output.pregnancymode == 1", radioButtons("trimester", "", c("1. trimester" = 1, "2. trimester" = 2, "3. trimester" = 3))),
-                          br(),
                           conditionalPanel(condition = "output.pregnancymode != 1", actionButton("pregnancy_button", HTML("add trimester column"), style = buttoncolors2, width = '90%')),
                           br()
                  ),
-                 menuItem("select age", startExpanded = FALSE,
-                          br(),
-                          HTML("<div style='text-align:center;width:100%;font-size:80%'><i>from / to</i></div>"),
-                          fluidRow(column(6, numericInput("agell", NULL, "0")), column(6, numericInput("ageul", NULL, "0"))),
-                          actionButton("drift", HTML("drift check"), style = buttoncolors1, width = '100%'),
-                          conditionalPanel(condition = "output.showstratslider != '0'", sliderInput("stratnum", "preferred no. of groups", min = 2, max = 12, value = 3, step = 1,ticks = FALSE)),
-                          br()
-                 ),
-                 menuItem("select method", startExpanded = FALSE,
+                 menuItem("method settings", startExpanded = FALSE,
                           radioButtons("methodradio", "", choiceNames = list(
                             HTML("<b>refineR</b> <a href = 'https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8346497/pdf/41598_2021_Article_95301.pdf'>(Lit.)</a>"),
                             HTML("<b>TMC</b> <a href = 'https://www.degruyter.com/document/doi/10.1515/cclm-2018-1341/html'>(Lit.)</a>"),
@@ -168,15 +168,12 @@ ui <-
                                            checkboxInput("modboxcox", HTML("<i style = 'font-size:90%;'>use modified Box-Cox</i>"), value = FALSE),
                                            sliderInput("nbootstrap", NULL, min=0, max=50, value=0, step=5, ticks=FALSE),
                                            HTML("<div style = 'text-align:center;font-size:90%'><i>bootstrap iterations</i></div>")),
-                          br()
-                 ),
-                 menuItem("select limits for comparison", startExpanded = FALSE,
-                          HTML("<br><div style='text-align:center;width:100%;font-size:80%'><i>lower limit / upper limit </i>"),
+                          br(),
+                          HTML("<br><div style='text-align:center;width:100%;font-size:80%'><i>comparison limits (lower/upper)</i>"),
                           fluidRow(
                             column(6, numericInput("referencelimits.low", NULL, "0.0", step = 0.1)),
                             column(6, numericInput("referencelimits.high", NULL, "0.0", step = 0.1))),
-                          HTML("<div style='text-align:center;width:100%;font-size:80%'>Permissible uncertainty <a href = 'https://www.degruyter.com/document/doi/10.1515/cclm-2014-0874/html'>(Lit.1 </a> and <a href = 'https://doi.org/10.1515/labmed-2023-0042'>Lit.2)</a></div>"),
-                          br()
+                          HTML("<div style='text-align:center;width:100%;font-size:80%'>Permissible uncertainty <a href = 'https://www.degruyter.com/document/doi/10.1515/cclm-2014-0874/html'>(Lit.1 </a> and <a href = 'https://doi.org/10.1515/labmed-2023-0042'>Lit.2)</a></div>")
                  ),
                  br(),
                  actionButton("calc", HTML("<b>calculate</b>"), style = buttoncolors1, width = '100%'),
@@ -193,8 +190,42 @@ ui <-
     
     dashboardBody(
       add_busy_spinner(spin = "folding-cube", color = "#003B73", position = "full-page", height = "150px", width = "150px", onstart = FALSE, timeout = 2000),
-      box(title = "plot", id = "boxplot", width = 12, solidHeader = TRUE, collapsible = TRUE, collapsed = TRUE, status = "primary", plotOutput("plot"), htmlOutput("placeholder", style = "font-size:80%;")),
-      box(title = "table", id = "boxtable", width = 4, solidHeader = TRUE, collapsible = TRUE, status = "primary", rHandsontableOutput("table"))
+      as.card_item(
+        box(
+          title="data input", 
+          id = "boxtable",
+          width = 5, 
+          solidHeader = TRUE, 
+          collapsible = TRUE, 
+          status = "primary",
+          sidebar= boxSidebar(
+            title= "Settings",
+            id= "initboxbox",
+            width = 30,
+            solidHeader = FALSE, 
+            collapsible = TRUE,
+            collapsed = TRUE,
+            status = "danger",
+            HTML("<div style='text-align:left;width:100%;font-size:100%'><r> Please initialize sex variables </r></div>"),
+            htmlOutput("Notification_init"),
+            selectInput(
+              "Init_female",
+              "female:",
+              choices="F"),
+            selectInput(
+              "Init_male",
+              "male:",
+              choices="M"),
+            selectInput(
+              "Init_diverse",
+              "diverse:",
+              choices="D")),
+          card(
+            max_height = "700px",
+            rHandsontableOutput("table")
+          ))
+      ),
+      box(title = "results", id = "boxplot", width = 12, solidHeader = TRUE, collapsible = TRUE, collapsed = TRUE, status = "primary", plotOutput("plot"), htmlOutput("placeholder", style = "font-size:80%;"))
     )
   )
 
@@ -204,7 +235,7 @@ server <- function(input, output, session) {
   dataframe = data.frame(result = rep(NA, tablesize), age = rep(NA, tablesize), sex = factor(rep(NA, tablesize), levels = sexlist))
   dataframe$result = as.character(dataframe$result)
   dataframe$age = as.numeric(dataframe$age)
-  output$table <- renderRHandsontable(rhandsontable(dataframe, width = '100%', height = 550, stretchH = "all", rowHeaderWidth = 65) %>%
+  output$table <- renderRHandsontable(rhandsontable(dataframe, width = '400', height = 550, stretchH = "all", rowHeaderWidth = 65) %>%
                                         hot_col("result", validator = resultvalidator) %>%
                                         hot_col("sex", allowInvalid = TRUE)
 )
@@ -219,10 +250,35 @@ server <- function(input, output, session) {
   })
   outputOptions(output, "pregnancymode", suspendWhenHidden=FALSE)
   
+  # Input Table
   observeEvent(input$table, {
     dataframe = hot_to_r(input$table)
+    input_sex= unique(dataframe$sex)
+    updateSelectInput(
+      session = getDefaultReactiveDomain(),
+      inputId = "Init_female",
+      label = "female:",
+      choices= input_sex,
+      selected = "F"
+    )
+    updateSelectInput(
+      session = getDefaultReactiveDomain(),
+      inputId = "Init_male",
+      label = "male:",
+      choices= input_sex,
+      selected = "M"
+    )
+    updateSelectInput(
+      session = getDefaultReactiveDomain(),
+      inputId = "Init_diverse",
+      label = "diverse:",
+      choices= input_sex,
+      selected = "D"
+    )
+    updateBox("initbox", action = "toggle")
   })
-  
+
+    
   # Clear data and table
   observeEvent(input$clear, {
     dataframe = data.frame(result = rep(NA, tablesize), age = rep(NA, tablesize), sex = factor(rep(NA, tablesize), levels = sexlist))
@@ -294,6 +350,9 @@ server <- function(input, output, session) {
   
   # Visualize data for sex differences
   observeEvent(input$sexbox, {
+    femalelist = c(femalelist, input$Init_female)
+    malelist = c(malelist,input$Init_male)
+    diverselist = c(diverselist,input$Init_diverse)
     dataframe = hot_to_r(input$table)
     dataframe$result <- gsub(",", ".", dataframe$result, fixed = TRUE)
     dataframe$age <- gsub(",", ".", dataframe$age, fixed = TRUE)
@@ -305,8 +364,14 @@ server <- function(input, output, session) {
     ageul <- isolate(input$ageul)
     agelimitsvalid <- (ageul > 0 && (ageul > agell) && !is.na(agell) && !is.na(ageul))  
     if (agelimitsvalid) dataframe <- dataframe[(dataframe$age >= agell) & (dataframe$age <= ageul), ]
-    dataframe <- dataframe %>% mutate(sex = ifelse(sex %in% femalelist, 'F', ifelse(sex %in% malelist, 'M', ifelse(sex == 'D', 'D', 'X'))))
+    dataframe <- dataframe %>% mutate(sex = ifelse(sex %in% femalelist, 'F', ifelse(sex %in% malelist, 'M', ifelse(sex %in% diverselist, 'D', 'X'))))
     dataframe <- dataframe[!is.na(dataframe$sex), ]
+    
+    sexradio<- isolate(input$sexradio)
+    if (sexradio == 'M') dataframe <- dataframe[dataframe$sex == 'M', ]
+    else if (sexradio == 'F') dataframe <- dataframe[dataframe$sex == 'F', ]
+    else if (sexradio == 'D') dataframe <- dataframe[dataframe$sex == 'D', ]
+
     cases <- sum(dataframe$result > 0 & !is.na(dataframe$result) & dataframe$sex != "" & !is.na(dataframe$sex))
     dataframe <- dataframe %>% group_by(sex) %>% filter(n() >= 100)
     casesfiltered <- sum(dataframe$result > 0 & !is.na(dataframe$result) & dataframe$sex != "" & !is.na(dataframe$sex))
@@ -365,6 +430,9 @@ server <- function(input, output, session) {
   
   # Visualize drift
   observeEvent(input$drift, {
+    femalelist = c(femalelist, input$Init_female)
+    malelist = c(malelist,input$Init_male)
+    diverselist = c(diverselist,input$Init_diverse)
     dataframe = hot_to_r(input$table)
     dataframe$result <- gsub(",", ".", dataframe$result, fixed = TRUE)
     dataframe$age <- gsub(",", ".", dataframe$age, fixed = TRUE)
@@ -373,14 +441,15 @@ server <- function(input, output, session) {
     dataframe <- dataframe[dataframe$result > 0, ]
     dataframe <- dataframe[!is.na(dataframe$result), ]
     sexradio <- isolate(input$sexradio)
-    if (sexradio == 'M') dataframe <- dataframe[toupper(substr(dataframe$sex, 1, 1)) == 'M', ]
-    else if (sexradio == 'F') dataframe <- dataframe[toupper(substr(dataframe$sex, 1, 1)) == 'F' | toupper(substr(dataframe$sex, 1, 1)) == 'W', ]
+    if (sexradio == 'M') dataframe <- dataframe[dataframe$sex == 'M', ]
+    else if (sexradio == 'F') dataframe <- dataframe[dataframe$sex == 'F', ]
     else if (sexradio == 'D') dataframe <- dataframe[dataframe$sex == 'D', ]
     if ("trimester" %in% colnames(dataframe)) dataframe <- dataframe[dataframe$trimester == input$trimester, ]
     agell <- isolate(input$agell)
     ageul <- isolate(input$ageul)
     agelimitsvalid <- (ageul > 0 && (ageul > agell) && !is.na(agell) && !is.na(ageul))  
     if (agelimitsvalid) dataframe <- dataframe[(dataframe$age >= agell) & (dataframe$age <= ageul), ]
+
     cases <- sum(dataframe$result > 0 & !is.na(dataframe$result) & dataframe$age > 0 & !is.na(dataframe$age))
     
     # Subsampling and reduction of sample size for n>10000
@@ -498,6 +567,9 @@ server <- function(input, output, session) {
   
   # Start calculation
   observeEvent(input$calc, {
+    femalelist = c(femalelist, input$Init_female)
+    malelist = c(malelist,input$Init_male)
+    diverselist = c(diverselist,input$Init_diverse)
     dataframe = hot_to_r(input$table)
     methodradio <- isolate(input$methodradio)
     dataframe$result <- gsub(",", ".", dataframe$result, fixed = TRUE)
@@ -507,8 +579,8 @@ server <- function(input, output, session) {
     dataframe <- dataframe[dataframe$result > 0, ]
     dataframe <- dataframe[!is.na(dataframe$result), ]
     sexradio <- isolate(input$sexradio)
-    if (sexradio == 'M') dataframe <- dataframe[toupper(substr(dataframe$sex, 1, 1)) == 'M', ]
-    else if (sexradio == 'F') dataframe <- dataframe[toupper(substr(dataframe$sex, 1, 1)) == 'F' | toupper(substr(dataframe$sex, 1, 1)) == 'W', ]
+    if (sexradio == 'M') dataframe <- dataframe[dataframe$sex == 'M', ]
+    else if (sexradio == 'F') dataframe <- dataframe[dataframe$sex == 'F', ]
     else if (sexradio == 'D') dataframe <- dataframe[dataframe$sex == 'D', ]
     if ("trimester" %in% colnames(dataframe)) dataframe <- dataframe[dataframe$trimester == input$trimester, ]
     agell <- isolate(input$agell)
