@@ -979,7 +979,7 @@ server <- function(input, output, session) {
           else if (sexradioCalc == 'F') "female"
           else if (sexradioCalc == 'D') "non-binary"
           else "no selection",
-          if ("trimester" %in% colnames(dataframe)) if (trimesterCalc== 0) "<br>no trimester in data " else if (trimesterCalc== 1)"<br>trimester: 1. " else if (trimesterCalc== 2)"<br>trimester: 2. " else if (trimesterCalc== 3)"<br>trimester: 3. ",
+          if ("trimester" %in% colnames(dataframe)) if (trimesterCalc== 0) "<br>no trimester in dataset " else if (trimesterCalc== 1)"<br>trimester: 1. " else if (trimesterCalc== 2)"<br>trimester: 2. " else if (trimesterCalc== 3)"<br>trimester: 3. ",
           "<br>method: ",
           if (methodradio == 'refiner') "refineR"
           else if (methodradio == 'tmc') "TMC"
