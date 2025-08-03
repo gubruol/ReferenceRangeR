@@ -432,7 +432,7 @@ server <- function(input, output, session) {
     dataframe$result <- gsub("^<", "", dataframe$result) 
     dataframe$result <- gsub(",", ".", dataframe$result, fixed = TRUE)
     dataframe$result <- as.numeric(dataframe$result)
-    dataframe$age <- as.numeric(as.character(dataframe$age))
+    dataframe$age <- as.numeric(dataframe$age)
     dataframe <- dataframe[dataframe$result > 0 & !is.na(dataframe$result), ]
     femalelist = c(femalelist, input$Init_female)
     malelist = c(malelist,input$Init_male)
