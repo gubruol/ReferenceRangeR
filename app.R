@@ -286,7 +286,7 @@ ui <-
                       numericInput("strat_ageul", NULL, "0")))),
                   conditionalPanel(
                     condition = "output.advanced == 1", 
-                    sliderInput("stratnum", "max. no. of age groups", min = 2, max = 12, value = 3, step = 1,ticks = FALSE)
+                    sliderInput("stratnum", "max. no. of age groups", min = 2, max = 12, value = 5, step = 1,ticks = FALSE)
                     )
                   ),
                     card(
