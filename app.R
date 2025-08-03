@@ -379,7 +379,7 @@ ui <-
                                 value = FALSE),
                   sliderInput("nbootstrap", NULL, min=0, max=50, value=0, step=5, ticks=FALSE),
                 HTML("<div style = 'text-align:center;line-height: 10px;font-size:90%'><i>bootstrap iterations</i></div>")
-                ),
+                )),
               checkboxInput(
                 "compare", 
                 HTML("<div style='text-align:left;width:100%;font-size:80%'><r>Compare RI limits:</r></div>"), 
@@ -398,7 +398,7 @@ ui <-
                                      id = "ref_high_container",
                                      numericInput("referencelimits.high", NULL, "0.0", step = 0.1)))),
                              HTML("<div style='text-align:center;width:100%;font-size:80%'>Permissible uncertainty <a href = 'https://www.degruyter.com/document/doi/10.1515/cclm-2014-0874/html'>(Lit.1 </a> and <a href = 'https://doi.org/10.1515/labmed-2023-0042'>Lit.2)</a></div>")
-                               ))
+                               )
               ),
             card(
               max_height = 400,
@@ -429,10 +429,10 @@ server <- function(input, output, session) {
   raw_data <- reactive({
     dataframe <- hot_to_r(req(input$table))
     if (is.null(dataframe)) return(dataframe1)
-    dataframe$result <- gsub("^<", "", dataframe$result) # das müssen wir dann auch für andere als tmc machen.
+    dataframe$result <- gsub("^<", "", dataframe$result) 
     dataframe$result <- gsub(",", ".", dataframe$result, fixed = TRUE)
     dataframe$result <- as.numeric(dataframe$result)
-    dataframe$age <- as.numeric(dataframe$age)
+    dataframe$age <- as.numeric(as.character(dataframe$age))
     dataframe <- dataframe[dataframe$result > 0 & !is.na(dataframe$result), ]
     femalelist = c(femalelist, input$Init_female)
     malelist = c(malelist,input$Init_male)
@@ -444,6 +444,7 @@ server <- function(input, output, session) {
     return(dataframe)
   })
   
+  
   raw_fasttml <- reactive({
     fasttml = input$fasttml
     if (is.null(fasttml)) fasttml == T
@@ -452,7 +453,8 @@ server <- function(input, output, session) {
     return(fasttml)
   })
   
-  # Set initial Outputconditions  
+  
+  # Set initial Output conditions  
   
   output$advanced <- renderText({
     '0'
@@ -644,20 +646,22 @@ server <- function(input, output, session) {
     if (!input$boxplot$collapsed) updateBox("boxplot", action = "toggle")
     if (!input$strat_boxplot$collapsed) updateBox("strat_boxplot", action = "toggle")
     
-    dataframe = data.frame(result = rep(NA, tablesize), age = rep(NA, tablesize), sex = factor(rep(NA, tablesize), levels = sexlist))
-    dataframe$result = as.numeric(dataframe$result)
-    dataframe$age = as.numeric(dataframe$age)
-    demosamplesize <- tablesize * 0.25
-    dataframe$age[1:demosamplesize] <- round(runif(demosamplesize, min = 1, max = 99), digits = 2)
-    dataframe$sex[1:demosamplesize] <- factor(sample(c("M", "F"), demosamplesize, replace = TRUE), levels = sexlist)
-    dataframe$result[1:demosamplesize] <- SSlogis(dataframe$age[1:demosamplesize], 5, 60, 6) + rnorm(demosamplesize, mean = 37.5, sd = 3.75)
-    pathsize <- round(demosamplesize / 100, digits = 0) # 10% pathological values ???
-    dataframe$result[1:pathsize] <- SSlogis(dataframe$age[1:pathsize], 5, 60, 6) + rnorm(pathsize, 20, 5)
-    dataframe$result[(1 + pathsize):(3 * pathsize)] <- SSlogis(dataframe$age[(1 + pathsize):(3 * pathsize)], 5, 60, 6) + rnorm(2 * pathsize, 28, 3)
-    dataframe$result[(1 + 3 * pathsize):(8 * pathsize)] <- SSlogis(dataframe$age[(1 + 3 * pathsize):(8 * pathsize)], 5, 60, 6) + rnorm(5 * pathsize, 50, 4.5)
-    dataframe$result[(1 + 8 * pathsize):(10 * pathsize)] <- SSlogis(dataframe$age[(1 + 8 * pathsize):(10 * pathsize)], 5, 60, 6) + rnorm(2 * pathsize, 60, 10)
-    dataframe$result <- round(dataframe$result, 2)
-    dataframe$result = as.character(dataframe$result)
+    dataframe=read.csv2("/Users/maikevoss/desktop/ReferenceRangeR/RRR_Demodaten_OffSexlist_nonNumericResult.csv")
+    dataframe=dataframe[,c(-1)]
+    #dataframe = data.frame(result = rep(NA, tablesize), age = rep(NA, tablesize), sex = factor(rep(NA, tablesize), levels = sexlist))
+    #dataframe$result = as.numeric(dataframe$result)
+    #dataframe$age = as.numeric(dataframe$age)
+    #demosamplesize <- tablesize * 0.25
+    #dataframe$age[1:demosamplesize] <- round(runif(demosamplesize, min = 1, max = 99), digits = 2)
+    #dataframe$sex[1:demosamplesize] <- factor(sample(c("M", "F"), demosamplesize, replace = TRUE), levels = sexlist)
+    #dataframe$result[1:demosamplesize] <- SSlogis(dataframe$age[1:demosamplesize], 5, 60, 6) + rnorm(demosamplesize, mean = 37.5, sd = 3.75)
+    #pathsize <- round(demosamplesize / 10, digits = 0) # 10% pathological values
+    #dataframe$result[1:pathsize] <- SSlogis(dataframe$age[1:pathsize], 5, 60, 6) + rnorm(pathsize, 20, 5)
+    #dataframe$result[(1 + pathsize):(3 * pathsize)] <- SSlogis(dataframe$age[(1 + pathsize):(3 * pathsize)], 5, 60, 6) + rnorm(2 * pathsize, 28, 3)
+    #dataframe$result[(1 + 3 * pathsize):(8 * pathsize)] <- SSlogis(dataframe$age[(1 + 3 * pathsize):(8 * pathsize)], 5, 60, 6) + rnorm(5 * pathsize, 50, 4.5)
+    #dataframe$result[(1 + 8 * pathsize):(10 * pathsize)] <- SSlogis(dataframe$age[(1 + 8 * pathsize):(10 * pathsize)], 5, 60, 6) + rnorm(2 * pathsize, 60, 10)
+    #dataframe$result <- round(dataframe$result, 2)
+    #dataframe$result = as.character(dataframe$result)
     updateNumericInput(session, "agell", value = 18)
     updateNumericInput(session, "ageul", value = 45)
     updateNumericInput(session, "strat_agell", value = 18)
@@ -993,6 +997,7 @@ server <- function(input, output, session) {
         estimateright <- length(dataframe$result[dataframe$result > reflim(dataframe$result)$limits[2]])
         if (estimateright > estimateleft) pathright <- TRUE
         else pathright <- FALSE
+
         
         output$plot <- renderPlot({
           temptml <- tml(na.omit(dataframe$result), pathright)
