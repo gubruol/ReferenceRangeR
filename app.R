@@ -808,8 +808,6 @@ server <- function(input, output, session) {
     updateNumericInput(session, "agell", value = isolate(input$strat_agell))
     updateNumericInput(session, "ageul", value = isolate(input$strat_ageul))
     
-    if ("trimester" %in% colnames(dataframe)) dataframe <- dataframe[dataframe$trimester == input$trimester, ]
-    
     # Subsampling and reduction of sample size for n>10000
     dataframe[sample(nrow(dataframe)), ]
     if (cases > 10000) dataframe <- dataframe[sample(1:length(dataframe$result), 10000), ]
