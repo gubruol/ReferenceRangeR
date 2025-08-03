@@ -646,22 +646,21 @@ server <- function(input, output, session) {
     if (!input$boxplot$collapsed) updateBox("boxplot", action = "toggle")
     if (!input$strat_boxplot$collapsed) updateBox("strat_boxplot", action = "toggle")
     
-    dataframe=read.csv2("/Users/maikevoss/desktop/ReferenceRangeR/RRR_Demodaten_OffSexlist_nonNumericResult.csv")
-    dataframe=dataframe[,c(-1)]
-    #dataframe = data.frame(result = rep(NA, tablesize), age = rep(NA, tablesize), sex = factor(rep(NA, tablesize), levels = sexlist))
-    #dataframe$result = as.numeric(dataframe$result)
-    #dataframe$age = as.numeric(dataframe$age)
-    #demosamplesize <- tablesize * 0.25
-    #dataframe$age[1:demosamplesize] <- round(runif(demosamplesize, min = 1, max = 99), digits = 2)
-    #dataframe$sex[1:demosamplesize] <- factor(sample(c("M", "F"), demosamplesize, replace = TRUE), levels = sexlist)
-    #dataframe$result[1:demosamplesize] <- SSlogis(dataframe$age[1:demosamplesize], 5, 60, 6) + rnorm(demosamplesize, mean = 37.5, sd = 3.75)
-    #pathsize <- round(demosamplesize / 10, digits = 0) # 10% pathological values
-    #dataframe$result[1:pathsize] <- SSlogis(dataframe$age[1:pathsize], 5, 60, 6) + rnorm(pathsize, 20, 5)
-    #dataframe$result[(1 + pathsize):(3 * pathsize)] <- SSlogis(dataframe$age[(1 + pathsize):(3 * pathsize)], 5, 60, 6) + rnorm(2 * pathsize, 28, 3)
-    #dataframe$result[(1 + 3 * pathsize):(8 * pathsize)] <- SSlogis(dataframe$age[(1 + 3 * pathsize):(8 * pathsize)], 5, 60, 6) + rnorm(5 * pathsize, 50, 4.5)
-    #dataframe$result[(1 + 8 * pathsize):(10 * pathsize)] <- SSlogis(dataframe$age[(1 + 8 * pathsize):(10 * pathsize)], 5, 60, 6) + rnorm(2 * pathsize, 60, 10)
-    #dataframe$result <- round(dataframe$result, 2)
-    #dataframe$result = as.character(dataframe$result)
+  
+    dataframe = data.frame(result = rep(NA, tablesize), age = rep(NA, tablesize), sex = factor(rep(NA, tablesize), levels = sexlist))
+    dataframe$result = as.numeric(dataframe$result)
+    dataframe$age = as.numeric(dataframe$age)
+    demosamplesize <- tablesize * 0.25
+    dataframe$age[1:demosamplesize] <- round(runif(demosamplesize, min = 1, max = 99), digits = 2)
+    dataframe$sex[1:demosamplesize] <- factor(sample(c("M", "F"), demosamplesize, replace = TRUE), levels = sexlist)
+    dataframe$result[1:demosamplesize] <- SSlogis(dataframe$age[1:demosamplesize], 5, 60, 6) + rnorm(demosamplesize, mean = 37.5, sd = 3.75)
+    pathsize <- round(demosamplesize / 10, digits = 0) # 10% pathological values
+    dataframe$result[1:pathsize] <- SSlogis(dataframe$age[1:pathsize], 5, 60, 6) + rnorm(pathsize, 20, 5)
+    dataframe$result[(1 + pathsize):(3 * pathsize)] <- SSlogis(dataframe$age[(1 + pathsize):(3 * pathsize)], 5, 60, 6) + rnorm(2 * pathsize, 28, 3)
+    dataframe$result[(1 + 3 * pathsize):(8 * pathsize)] <- SSlogis(dataframe$age[(1 + 3 * pathsize):(8 * pathsize)], 5, 60, 6) + rnorm(5 * pathsize, 50, 4.5)
+    dataframe$result[(1 + 8 * pathsize):(10 * pathsize)] <- SSlogis(dataframe$age[(1 + 8 * pathsize):(10 * pathsize)], 5, 60, 6) + rnorm(2 * pathsize, 60, 10)
+    dataframe$result <- round(dataframe$result, 2)
+    dataframe$result = as.character(dataframe$result)
     updateNumericInput(session, "agell", value = 18)
     updateNumericInput(session, "ageul", value = 45)
     updateNumericInput(session, "strat_agell", value = 18)
