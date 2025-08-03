@@ -174,7 +174,7 @@ ui <-
           br(),
           br(),
           HTML("<div style='text-align:center;width:100%;font-size:90%'><r>Visualization and Stratification:</r></div>"),
-          actionButton("sexbox", HTML("Compare sexes"), style = buttoncolors1, width = '100%'),
+          actionButton("sexbox", HTML("Check sex differences"), style = buttoncolors1, width = '100%'),
           actionButton("drift", HTML("Check age drift"), style = buttoncolors1, width = '100%'),
           br(),
           br(),
@@ -190,7 +190,7 @@ ui <-
         conditionalPanel(
               condition = "output.advanced == 0",
               tags$div(class="header-button",
-                       actionButton(inputId="advanced_button",HTML("Advaced mode"), style = buttoncolors3, width = '100%')
+                       actionButton(inputId="advanced_button",HTML("Advanced mode"), style = buttoncolors3, width = '100%')
                   )),
             conditionalPanel(
               condition = "output.advanced == 1",
