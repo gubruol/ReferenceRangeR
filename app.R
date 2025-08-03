@@ -48,6 +48,10 @@ diverselist = c("D", "X")
 sexlist <- c(malelist, femalelist, diverselist)
 tablesize <- 200000
 input_sex=NULL
+dataframe = data.frame(result = rep(NA, tablesize), age = rep(NA, tablesize), sex = factor(rep(NA, tablesize), levels = sexlist))
+dataframe_tmc = data.frame(result = rep(NA, tablesize), age = rep(NA, tablesize), sex = factor(rep(NA, tablesize), levels = sexlist))
+fasttml=NULL
+
 
 # Path for TMC and TML library
 if (Sys.info()["sysname"] == "Windows") {
@@ -138,7 +142,7 @@ ui <-
 
       .layout-sidebar1 {
           overflow-y: hidden !important;
-          max-height: 650px !important;
+          max-height: 700px !important;
         }
         
         .layout-sidebar2 {
@@ -231,6 +235,11 @@ ui <-
                     condition = "output.pregnancymode != 1", 
                     actionButton("pregnancy_button", HTML("add trimester column"), 
                                  style = buttoncolors4)
+                ),
+                conditionalPanel(
+                  condition = "output.pregnancymode == 1", 
+                  actionButton("remove_pregnancy", HTML("remove trimester column"), 
+                               style = buttoncolors4)
                 ))),
               card(
                 max_height = "700px",
@@ -248,7 +257,7 @@ ui <-
             collapsed = TRUE, 
             status = "primary",
               card(
-                max_height= 650,
+                max_height= 700,
                 tags$div(class = "layout-sidebar1"
                          ,layout_sidebar( 
                 sidebar=sidebar(
@@ -257,7 +266,8 @@ ui <-
                   position = "left", 
                   open = "desktop",
                   HTML("<div style='text-align:center;width:100%;font-size:100%'><r>Visualization settings:</r></div>"),
-                  radioButtons("sexradio", "", c("all" = "A", "male" = "M", "female" = "F", "non-binary" = "D")),
+                  tags$div(class = "radioButtons",
+                  radioButtons("sexradio", "", c("all" = "A", "male" = "M", "female" = "F", "non-binary" = "D"))),
                   HTML("<div style='text-align:center;width:100%;font-size:80%'><i>Age limits from / to</i></div>"),
                   fluidRow(
                     column(
@@ -276,7 +286,7 @@ ui <-
                       plotOutput("strat_plot"
                               )),
                 card(
-                  max_height= "320",
+                  max_height= "330",
                     htmlOutput("strat_placeholder"
                                )))
                   ))
@@ -315,7 +325,7 @@ ui <-
               conditionalPanel(
                 condition = "output.pregnancymode == 1", 
                 tags$div(class = "radioButtons",
-                         radioButtons("trimester", "", 
+                         radioButtons("trimesterCalc", "", 
                                       c("1. trimester" = 1, "2. trimester" = 2, "3. trimester" = 3)))
                 ),
               HTML("<div style='text-align:center;width:100%;font-size:80%'><r>Select age: <i>from / to</i></div>"),
@@ -334,10 +344,13 @@ ui <-
                        ),
               conditionalPanel(
                 condition = "input.methodradio == 'tml'", 
-                checkboxInput("fasttml", 
+                conditionalPanel(
+                  condition = "output.advanced == 1",
+                  checkboxInput("fasttml", 
                               HTML("Fast mode <i style = 'font-size:80%;'>(3 significant figures)</i>"),
                               value = TRUE
                               )
+                )
                 ),
               conditionalPanel(
                 condition = "output.advanced == 1",
@@ -378,15 +391,58 @@ ui <-
 # Server initialization
 server <- function(input, output, session) {
   setwd(tempdir())
-  dataframe = data.frame(result = rep(NA, tablesize), age = rep(NA, tablesize), sex = factor(rep(NA, tablesize), levels = sexlist))
-  dataframe$result = as.character(dataframe$result)
-  dataframe$age = as.numeric(dataframe$age)
-  output$table <- renderRHandsontable(rhandsontable(dataframe, width = '400', height = 550, stretchH = "all", rowHeaderWidth = 65) %>%
+  dataframe1 = data.frame(result = rep(NA, tablesize), age = rep(NA, tablesize), sex = factor(rep(NA, tablesize), levels = sexlist))
+  dataframe1$result = as.character(dataframe$result)
+  dataframe1$age = as.numeric(dataframe$age)
+  output$table <- renderRHandsontable(rhandsontable(dataframe1, width = '400', height = 550, stretchH = "all", rowHeaderWidth = 65) %>%
                                         hot_col("result", validator = resultvalidator) %>%
                                         hot_col("sex", allowInvalid = TRUE)
   )
   
- 
+  
+  raw_data <- reactive({
+    dataframe <- hot_to_r(req(input$table))
+    if (is.null(dataframe)) return(dataframe1)
+    dataframe$result <- gsub("^<", "", dataframe$result) # das müssen wir dann auch für andere als tmc machen.
+    dataframe$result <- gsub(",", ".", dataframe$result, fixed = TRUE)
+    dataframe$result <- as.numeric(dataframe$result)
+    dataframe$age <- as.numeric(dataframe$age)
+    dataframe <- dataframe[dataframe$result > 0 & !is.na(dataframe$result), ]
+    femalelist = c(femalelist, input$Init_female)
+    malelist = c(malelist,input$Init_male)
+    diverselist = c(diverselist,input$Init_diverse)
+    dataframe <- dataframe %>% mutate(sex = ifelse(sex %in% femalelist, 'F', ifelse(sex %in% malelist, 'M', ifelse(sex %in% diverselist, 'D', 'X'))))
+    dataframe <- dataframe[!is.na(dataframe$sex), ]
+    if ("trimester" %in% colnames(dataframe)) dataframe$trimester = plyr::mapvalues(dataframe$trimester,c(""),0)
+    if (input$remove_pregnancy) dataframe = dataframe[,-4]
+    return(dataframe)
+  })
+  
+# Die TMC Variante ist basically the same  
+  raw_data_tmc <- reactive({
+    dataframe <- hot_to_r(req(input$table))
+    if (is.null(dataframe)) return(dataframe1)
+    dataframe$result <- gsub("^<", "", dataframe$result) # warum erlauben wir das eigentlich, wenn wir es sowieso entfernen
+    dataframe$result <- gsub(",", ".", dataframe$result, fixed = TRUE) #Notwendig, wenn Komma verwendet werden
+    print(dataframe$result)
+    dataframe$result <- as.numeric(dataframe$result)
+    print(dataframe$result)
+    dataframe$age <- as.numeric(dataframe$age)
+    dataframe <- dataframe[dataframe$result > 0 & !is.na(dataframe$result), ]
+    dataframe <- dataframe %>% mutate(sex = ifelse(sex %in% femalelist, 'F', ifelse(sex %in% malelist, 'M', ifelse(sex %in% diverselist, 'D', 'X'))))
+    dataframe <- dataframe[!is.na(dataframe$sex), ]
+    return(dataframe)
+  })
+  
+  
+  raw_fasttml <- reactive({
+    fasttml = input$fasttml
+    if (is.null(fasttml)) fasttml == T
+    else if (fasttml==F) fasttml==F
+    else fasttml==T
+    return(fasttml)
+  })
+  
   # Set initial Outputconditions  
   
   output$advanced <- renderText({
@@ -402,10 +458,14 @@ server <- function(input, output, session) {
   })
   outputOptions(output, "pregnancymode", suspendWhenHidden=FALSE)
 
-  
+  output$fasttml = renderPrint({
+    raw_fasttml()
+  })
+  outputOptions(output, "fasttml", suspendWhenHidden=FALSE)
   
   # Input advanced mode
   observeEvent(input$advanced_button, {
+    updateBox("initbox", action = "toggle")
     output$advanced = renderText({
       '1'
       })
@@ -416,6 +476,7 @@ server <- function(input, output, session) {
       '0'
     })
   })
+  
   
   # Input Observations oben/close boxes  
   observeEvent(input$DI, {
@@ -439,7 +500,7 @@ server <- function(input, output, session) {
     if (!input$boxtable$collapsed) updateBox("boxtable", action = "toggle")
   })
   
-
+  
   
   # Input Table
   observeEvent(input$table, {
@@ -468,7 +529,7 @@ server <- function(input, output, session) {
     )
     comparesexlist = c(femalelist, input$Init_female, malelist, input$Init_male, diverselist, input$Init_diverse, "", NA)
     if (all(input_sex %in% comparesexlist) == FALSE) shinyalert("Check sex column variables...", "Please assign the data manually") 
-    if (all(input_sex %in% comparesexlist) == FALSE) updateBox("initbox", action = "toggle")
+    if (all(input_sex %in% comparesexlist) == FALSE) updateBox("initbox", action = "toggle") 
   })
   
   
@@ -480,21 +541,30 @@ server <- function(input, output, session) {
     if (!input$boxplot$collapsed) updateBox("boxplot", action = "toggle")
     if (!input$strat_boxplot$collapsed) updateBox("strat_boxplot", action = "toggle")
     
-    dataframe = data.frame(result = rep(NA, tablesize), age = rep(NA, tablesize), sex = factor(rep(NA, tablesize), levels = sexlist))
-    dataframe$age = as.numeric(dataframe$age)
-    dataframe$result = as.character(dataframe$result)
+    dataframe = dataframe1
     updateNumericInput(session, "referencelimits.low", value = 0)
     updateNumericInput(session, "referencelimits.high", value = 0)
     updateNumericInput(session, "agell", value = "")
     updateNumericInput(session, "ageul", value = "")
-    output$showstratslider <- renderText({ '0' })
     output$pregnancymode <- renderText({ '0' })
-    if (input$boxtable$collapsed) updateBox("boxtable", action = "toggle")
-    if (!input$boxplot$collapsed) updateBox("boxplot", action = "toggle")
-    output$table <- renderRHandsontable(rhandsontable(dataframe, width = '100%', height = 550, stretchH = "all", rowHeaderWidth = 65) %>%
+    output$table <- renderRHandsontable(rhandsontable(dataframe, width = '400', height = 550, stretchH = "all", rowHeaderWidth = 65) %>%
                                           hot_col("result", validator = resultvalidator) %>%
                                           hot_col("sex", allowInvalid = TRUE)
     )
+
+    output$strat_plot <- renderPlot({
+      ""
+    })
+    output$strat_placeholder <- renderText({
+      ""
+    })
+    output$plot <- renderPlot({
+      ""
+    })
+    output$placeholder <- renderText({
+      ""
+    })
+    
   })
   
   # Generate demo data
@@ -507,11 +577,11 @@ server <- function(input, output, session) {
     dataframe = data.frame(result = rep(NA, tablesize), age = rep(NA, tablesize), sex = factor(rep(NA, tablesize), levels = sexlist))
     dataframe$result = as.numeric(dataframe$result)
     dataframe$age = as.numeric(dataframe$age)
-    demosamplesize <- tablesize * 0.5
+    demosamplesize <- tablesize * 0.25
     dataframe$age[1:demosamplesize] <- round(runif(demosamplesize, min = 1, max = 99), digits = 2)
     dataframe$sex[1:demosamplesize] <- factor(sample(c("M", "F"), demosamplesize, replace = TRUE), levels = sexlist)
     dataframe$result[1:demosamplesize] <- SSlogis(dataframe$age[1:demosamplesize], 5, 60, 6) + rnorm(demosamplesize, mean = 37.5, sd = 3.75)
-    pathsize <- round(demosamplesize / 100, digits = 0) # 10% pathological values
+    pathsize <- round(demosamplesize / 100, digits = 0) # 10% pathological values??? => 1%!?
     dataframe$result[1:pathsize] <- SSlogis(dataframe$age[1:pathsize], 5, 60, 6) + rnorm(pathsize, 20, 5)
     dataframe$result[(1 + pathsize):(3 * pathsize)] <- SSlogis(dataframe$age[(1 + pathsize):(3 * pathsize)], 5, 60, 6) + rnorm(2 * pathsize, 28, 3)
     dataframe$result[(1 + 3 * pathsize):(8 * pathsize)] <- SSlogis(dataframe$age[(1 + 3 * pathsize):(8 * pathsize)], 5, 60, 6) + rnorm(5 * pathsize, 50, 4.5)
@@ -524,11 +594,8 @@ server <- function(input, output, session) {
     updateNumericInput(session, "ageul", value = 45)
     updateNumericInput(session, "strat_agell", value = 18)
     updateNumericInput(session, "strat_ageul", value = 45)
-    output$showstratslider <- renderText({ '0' })
     output$pregnancymode <- renderText({ '0' })
-    if (input$boxtable$collapsed) updateBox("boxtable", action = "toggle")
-    if (!input$boxplot$collapsed) updateBox("boxplot", action = "toggle")
-    output$table <- renderRHandsontable(rhandsontable(dataframe, width = '100%', height = 550, stretchH = "all", rowHeaderWidth = 65) %>%
+    output$table <- renderRHandsontable(rhandsontable(dataframe, width = '400', height = 550, stretchH = "all", rowHeaderWidth = 65) %>%
                                           hot_col("result", validator = resultvalidator) %>%
                                           hot_col("sex", allowInvalid = TRUE)
     )
@@ -536,16 +603,19 @@ server <- function(input, output, session) {
   
   # Add trimester column
   observeEvent(input$pregnancy_button, {
-    dataframe = data.frame(result = rep(NA, tablesize), age = rep(NA, tablesize), sex = factor(rep(NA, tablesize), levels = sexlist), trimester = factor(rep(NA, tablesize), levels = c(1, 2, 3)))
-    dataframe$result = as.character(dataframe$result)
-    dataframe$age = as.numeric(dataframe$age)
+    dataframe = data.frame(result = rep(NA, tablesize), age = rep(NA, tablesize), sex = factor(rep(NA, tablesize), levels = sexlist), trimester = factor(rep(NA, tablesize), levels = c(0,1, 2, 3)))
+    dataframe_raw=raw_data()
+    dataframe$result <- c(dataframe_raw$result, rep(NA, tablesize)- length(dataframe_raw$result))[1:tablesize]
+    dataframe$age <- c(dataframe_raw$age, rep(NA, tablesize)- length(dataframe_raw$age))[1:tablesize]
+    dataframe$sex <- c(dataframe_raw$sex, rep(NA, tablesize)- length(dataframe_raw$sex))[1:tablesize]
+    dataframe$trimester == 0
     updateNumericInput(session, "referencelimits.low", value = 0)
     updateNumericInput(session, "referencelimits.high", value = 0)
     updateNumericInput(session, "agell", value = "")
     updateNumericInput(session, "ageul", value = "")
-    output$showstratslider <- renderText({ '0' })
     output$pregnancymode <- renderText({ '1' })
     updateBox("boxtable")
+    updateBox("strat_boxplot")
     updateBox("boxplot")
     output$table <- renderRHandsontable(rhandsontable(dataframe, width = '450', height = 550, stretchH = "all", rowHeaderWidth = 65) %>%
                                           hot_col("result", validator = resultvalidator) %>%
@@ -553,7 +623,15 @@ server <- function(input, output, session) {
     )
   })
   
-
+  observeEvent(input$remove_pregnancy, {
+    dataframe= raw_data()
+    dataframe = dataframe[,-4]
+    output$table <- renderRHandsontable(rhandsontable(dataframe, width = '400', height = 550, stretchH = "all", rowHeaderWidth = 65) %>%
+                                          hot_col("result", validator = resultvalidator) %>%
+                                          hot_col("sex", allowInvalid = TRUE)
+    )
+    output$pregnancymode <- renderText({ '0' })
+  })
     
   # Visualize data for sex differences
   observeEvent(input$sexbox, {
@@ -562,24 +640,15 @@ server <- function(input, output, session) {
     if (!input$boxplot$collapsed) updateBox("boxplot", action = "toggle")
     if (!input$boxtable$collapsed) updateBox("boxtable", action = "toggle")
     
-    femalelist = c(femalelist, input$Init_female)
-    malelist = c(malelist,input$Init_male)
-    diverselist = c(diverselist,input$Init_diverse)
+    dataframe=raw_data()
     
-    dataframe = hot_to_r(input$table)
-    dataframe$result <- gsub(",", ".", dataframe$result, fixed = TRUE)
-    dataframe$result <- as.numeric(dataframe$result)
-    dataframe <- dataframe[dataframe$result > 0, ]
-    dataframe <- dataframe[!is.na(dataframe$result), ]
+    updateRadioButtons(session,"trimesterCalc", selected= isolate(input$sexradio))
     agell <- isolate(input$strat_agell)
     ageul <- isolate(input$strat_ageul)
     agelimitsvalid <- (ageul > 0 && (ageul > agell) && !is.na(agell) && !is.na(ageul))  
-    
+    print(agelimitsvalid)
     if (agelimitsvalid) dataframe <- dataframe[(dataframe$age >= agell) & (dataframe$age <= ageul), ]
-    
-    dataframe <- dataframe %>% mutate(sex = ifelse(sex %in% femalelist, 'F', ifelse(sex %in% malelist, 'M', ifelse(sex %in% diverselist, 'D', 'X'))))
-    dataframe <- dataframe[!is.na(dataframe$sex), ]
-    
+  
     updateNumericInput(session, "agell", value = isolate(input$strat_agell))
     updateNumericInput(session, "ageul", value = isolate(input$strat_ageul))
     
@@ -589,10 +658,10 @@ server <- function(input, output, session) {
     else if (sexradio == 'D') dataframe <- dataframe[dataframe$sex == 'D', ]
     
     updateRadioButtons(session,"sexradioCalc", selected= isolate(input$sexradio))
-    
-    cases <- sum(dataframe$result > 0 & !is.na(dataframe$result) & dataframe$sex != "" & !is.na(dataframe$sex))
+  
+    cases = length(dataframe$result)
     dataframe <- dataframe %>% group_by(sex) %>% filter(n() >= 100)
-    casesfiltered <- sum(dataframe$result > 0 & !is.na(dataframe$result) & dataframe$sex != "" & !is.na(dataframe$sex))
+    casesfiltered = length(dataframe$result)
     if (casesfiltered < cases) dataremoved = TRUE else dataremoved = FALSE
     if (casesfiltered < 500) shinyalert("insufficient data...", paste("The selected dataset contains ", casesfiltered, " results.\nPlease increase the sample size (minimum n=500)."), type = "error")
     else {
@@ -652,17 +721,9 @@ server <- function(input, output, session) {
     if (input$strat_boxplot$collapsed) updateBox("strat_boxplot", action = "toggle")
     if (!input$boxplot$collapsed) updateBox("boxplot", action = "toggle")
     if (!input$boxtable$collapsed) updateBox("boxtable", action = "toggle")
+
+    dataframe=raw_data()
     
-    femalelist = c(femalelist, input$Init_female)
-    malelist = c(malelist,input$Init_male)
-    diverselist = c(diverselist,input$Init_diverse)
-    
-    dataframe = hot_to_r(input$table)
-    dataframe$result <- gsub(",", ".", dataframe$result, fixed = TRUE)
-    dataframe$result <- as.numeric(dataframe$result)
-    dataframe <- dataframe[dataframe$result > 0, ]
-    dataframe <- dataframe[!is.na(dataframe$result), ]
-    dataframe <- dataframe %>% mutate(sex = ifelse(sex %in% femalelist, 'F', ifelse(sex %in% malelist, 'M', ifelse(sex %in% diverselist, 'D', 'X'))))
     sexradio<- isolate(input$sexradio)
     if (sexradio == 'M') dataframe <- dataframe[dataframe$sex == 'M', ]
     else if (sexradio == 'F') dataframe <- dataframe[dataframe$sex == 'F', ]
@@ -670,15 +731,17 @@ server <- function(input, output, session) {
     
     updateRadioButtons(session,"sexradioCalc", selected= isolate(input$sexradio))
     
-    if ("trimester" %in% colnames(dataframe)) dataframe <- dataframe[dataframe$trimester == input$trimester, ]
     agell <- isolate(input$strat_agell)
     ageul <- isolate(input$strat_ageul)
     agelimitsvalid <- (ageul > 0 && (ageul > agell) && !is.na(agell) && !is.na(ageul))  
     if (agelimitsvalid) dataframe <- dataframe[(dataframe$age >= agell) & (dataframe$age <= ageul), ]
-    cases <- sum(dataframe$result > 0 & !is.na(dataframe$result) & dataframe$age > 0 & !is.na(dataframe$age))
+    cases = length(dataframe$result)
+
     
     updateNumericInput(session, "agell", value = isolate(input$strat_agell))
     updateNumericInput(session, "ageul", value = isolate(input$strat_ageul))
+    
+    if ("trimester" %in% colnames(dataframe)) dataframe <- dataframe[dataframe$trimester == input$trimester, ]
     
     # Subsampling and reduction of sample size for n>10000
     dataframe[sample(nrow(dataframe)), ]
@@ -795,29 +858,19 @@ server <- function(input, output, session) {
     if (!input$strat_boxplot$collapsed) updateBox("strat_boxplot", action = "toggle")
     if (!input$boxtable$collapsed) updateBox("boxtable", action = "toggle")
     
-    femalelist = c(femalelist, input$Init_female)
-    malelist = c(malelist,input$Init_male)
-    diverselist = c(diverselist,input$Init_diverse)
-    
-    dataframe = hot_to_r(input$table)
+    dataframe = raw_data()
     methodradio <- isolate(input$methodradio)
-    dataframe$result <- gsub(",", ".", dataframe$result, fixed = TRUE)
-    
-    if (methodradio == 'tmc') dataframe$result <- gsub("^<", "", dataframe$result)
-    
-    dataframe$result <- as.numeric(dataframe$result)
-    dataframe <- dataframe[dataframe$result > 0, ]
-    dataframe <- dataframe[!is.na(dataframe$result), ]
-    
-    dataframe <- dataframe %>% mutate(sex = ifelse(sex %in% femalelist, 'F', ifelse(sex %in% malelist, 'M', ifelse(sex %in% diverselist, 'D', 'X'))))
+    if (methodradio == 'tmc') dataframe = raw_data_tmc()
     
     sexradioCalc<- isolate(input$sexradioCalc)
     if (sexradioCalc == 'M') dataframe <- dataframe[dataframe$sex == 'M', ]
     else if (sexradioCalc == 'F') dataframe <- dataframe[dataframe$sex == 'F', ]
     else if (sexradioCalc == 'D') dataframe <- dataframe[dataframe$sex == 'D', ]
     
-    if ("trimester" %in% colnames(dataframe)) dataframe <- dataframe[dataframe$trimester == input$trimester, ]
-    
+    if ("trimester" %in% colnames(dataframe)) trimesterCalc = isolate(input$trimesterCalc)
+    if (all(dataframe$trimester==0,na.rm=T)) trimesterCalc = 0
+    else dataframe = dataframe[dataframe$trimester == trimesterCalc ]
+  
     agell <- isolate(input$agell)
     ageul <- isolate(input$ageul)
     agelimitsvalid <- (ageul > 0 && (ageul > agell) && !is.na(agell) && !is.na(ageul))  
@@ -838,8 +891,10 @@ server <- function(input, output, session) {
       if (methodradio == 'refiner') {
         nbootstrap <- isolate(input$nbootstrap)
         modboxcox <- isolate(input$modboxcox)
-        if (modboxcox) boxcoxmode <- "BoxCox"
-        else boxcoxmode <- "modBoxCox"
+        print(modboxcox)
+        if (modboxcox) boxcoxmode <- "modBoxCox"
+        else boxcoxmode <- "BoxCox"
+        print(boxcoxmode)
         resri <- findRI(Data = na.omit(dataframe$result), model=boxcoxmode, NBootstrap=nbootstrap)
         if (nbootstrap > 0) 
           citext <- paste("95% confidence intervals: Lower limit (", round(getRI(resri)[1, 3], 2), " - ", round(getRI(resri)[1, 4], 2),
@@ -864,16 +919,19 @@ server <- function(input, output, session) {
         })
       }
       else if (methodradio == 'tml') {
+        fasttml=raw_fasttml()
+     
         if (quantile(dataframe$result, probs = 0.90) >= 1000) decimalcount <- 0
         else if (quantile(dataframe$result, probs = 0.90) >= 100) decimalcount <- 1
         else if (quantile(dataframe$result, probs = 0.90) >= 10) decimalcount <- 2
         else decimalcount <- 3
-        if (input$fasttml == TRUE && decimalcount > 0) decimalcount <- decimalcount - 1
+        if (fasttml == TRUE && decimalcount > 0) decimalcount <- decimalcount - 1
         dataframe$result <- round(dataframe$result, decimalcount)
         estimateleft <- length(dataframe$result[dataframe$result < reflim(dataframe$result)$limits[1]])
         estimateright <- length(dataframe$result[dataframe$result > reflim(dataframe$result)$limits[2]])
         if (estimateright > estimateleft) pathright <- TRUE
         else pathright <- FALSE
+        print(fasttml)
         
         output$plot <- renderPlot({
           temptml <- tml(na.omit(dataframe$result), pathright)
@@ -900,6 +958,7 @@ server <- function(input, output, session) {
         else output$plot <- renderPlot(reflim(dataframe$result, targets = NULL))
       }
       
+      
       output$placeholder = renderText({
         if (estimatedlimits.low > 100) decimalcount <- 0
         else if (estimatedlimits.low > 10) decimalcount <- 1
@@ -920,9 +979,10 @@ server <- function(input, output, session) {
           else if (sexradioCalc == 'F') "female"
           else if (sexradioCalc == 'D') "non-binary"
           else "no selection",
-          "<br>Method: ",
+          if ("trimester" %in% colnames(dataframe)) if (trimesterCalc== 0) "<br>no trimester in data " else if (trimesterCalc== 1)"<br>trimester: 1. " else if (trimesterCalc== 2)"<br>trimester: 2. " else if (trimesterCalc== 3)"<br>trimester: 3. ",
+          "<br>method: ",
           if (methodradio == 'refiner') "refineR"
-          else if (methodradio == 'TMC') "TMC"
+          else if (methodradio == 'tmc') "TMC"
           else if (methodradio == 'tml') "TML"
           else if (methodradio == 'kosmic') "kosmic"
           else if (methodradio == 'reflimr') "reflimR",
