@@ -49,7 +49,6 @@ sexlist <- c(malelist, femalelist, diverselist)
 tablesize <- 200000
 input_sex=NULL
 dataframe = data.frame(result = rep(NA, tablesize), age = rep(NA, tablesize), sex = factor(rep(NA, tablesize), levels = sexlist))
-dataframe_tmc = data.frame(result = rep(NA, tablesize), age = rep(NA, tablesize), sex = factor(rep(NA, tablesize), levels = sexlist))
 fasttml=NULL
 
 
@@ -149,6 +148,10 @@ ui <-
            overflow-y: hidden !important;
            max-height: 750px !important;
         }
+        .red-border input.form-control {
+          border: 2px solid red !important;
+          box-shadow: none !important;
+        }
                         "))
         ),
       use_theme(uoltheme),
@@ -200,6 +203,7 @@ ui <-
     ),
     
     dashboardBody(
+      useShinyjs(),
       add_busy_spinner(spin = "folding-cube", color = "#003B73", position = "full-page", height = "150px", width = "150px", onstart = FALSE, timeout = 2000),
           as.card_item(
             box(
@@ -272,13 +276,17 @@ ui <-
                   fluidRow(
                     column(
                       6, 
-                      numericInput("strat_agell", NULL, "0")), 
+                      div(
+                      id = "strat_agell_container",
+                      numericInput("strat_agell", NULL, "0"))), 
                     column(
-                      6, 
-                      numericInput("strat_ageul", NULL, "0"))),
+                      6,
+                      div(
+                        id = "strat_ageul_container",
+                      numericInput("strat_ageul", NULL, "0")))),
                   conditionalPanel(
                     condition = "output.advanced == 1", 
-                    sliderInput("stratnum", "max. no. of groups", min = 2, max = 12, value = 3, step = 1,ticks = FALSE)
+                    sliderInput("stratnum", "max. no. of age groups", min = 2, max = 12, value = 3, step = 1,ticks = FALSE)
                     )
                   ),
                     card(
@@ -329,7 +337,17 @@ ui <-
                                       c("1. trimester" = 1, "2. trimester" = 2, "3. trimester" = 3)))
                 ),
               HTML("<div style='text-align:center;width:100%;font-size:80%'><r>Select age: <i>from / to</i></div>"),
-              fluidRow(column(6, numericInput("agell", NULL, "0")), column(6, numericInput("ageul", NULL, "0"))),
+              fluidRow(
+                column(
+                  6,
+                  div(
+                    id = "agell_container",
+                    numericInput("agell", NULL, "0"))), 
+                column(
+                  6,
+                  div(
+                    id = "ageul_container",
+                    numericInput("ageul", NULL, "0")))),
               HTML("<div style='text-align:left;width:100%;line-height: 10px;font-size:90%'><r>Select method:</r></div>"),
               tags$div(class = "radioButtons",
                        radioButtons("methodradio", "", choiceNames = list(
@@ -369,8 +387,16 @@ ui <-
               conditionalPanel(condition = "input.compare==1",
                                HTML("<div style='text-align:center;width:100%;font-size:80%'><i>lower limit / upper limit </i>"),
                                fluidRow(
-                                 column(6, numericInput("referencelimits.low", NULL, "0.0", step = 0.1)),
-                                 column(6, numericInput("referencelimits.high", NULL, "0.0", step = 0.1))),
+                                 column(
+                                   6,
+                                   div(
+                                     id = "ref_low_container",
+                                   numericInput("referencelimits.low", NULL, "0.0", step = 0.1))),
+                                 column(
+                                   6,
+                                   div(
+                                     id = "ref_high_container",
+                                     numericInput("referencelimits.high", NULL, "0.0", step = 0.1)))),
                              HTML("<div style='text-align:center;width:100%;font-size:80%'>Permissible uncertainty <a href = 'https://www.degruyter.com/document/doi/10.1515/cclm-2014-0874/html'>(Lit.1 </a> and <a href = 'https://doi.org/10.1515/labmed-2023-0042'>Lit.2)</a></div>")
                                ))
               ),
@@ -417,23 +443,6 @@ server <- function(input, output, session) {
     if (input$remove_pregnancy) dataframe = dataframe[,-4]
     return(dataframe)
   })
-  
-# Die TMC Variante ist basically the same  
-  raw_data_tmc <- reactive({
-    dataframe <- hot_to_r(req(input$table))
-    if (is.null(dataframe)) return(dataframe1)
-    dataframe$result <- gsub("^<", "", dataframe$result) # warum erlauben wir das eigentlich, wenn wir es sowieso entfernen
-    dataframe$result <- gsub(",", ".", dataframe$result, fixed = TRUE) #Notwendig, wenn Komma verwendet werden
-    print(dataframe$result)
-    dataframe$result <- as.numeric(dataframe$result)
-    print(dataframe$result)
-    dataframe$age <- as.numeric(dataframe$age)
-    dataframe <- dataframe[dataframe$result > 0 & !is.na(dataframe$result), ]
-    dataframe <- dataframe %>% mutate(sex = ifelse(sex %in% femalelist, 'F', ifelse(sex %in% malelist, 'M', ifelse(sex %in% diverselist, 'D', 'X'))))
-    dataframe <- dataframe[!is.na(dataframe$sex), ]
-    return(dataframe)
-  })
-  
   
   raw_fasttml <- reactive({
     fasttml = input$fasttml
@@ -567,6 +576,67 @@ server <- function(input, output, session) {
     
   })
   
+  # Observations of numericInputs: Input lower value > Input higher value => red marking added
+    observe({
+      strat_agell <- input$strat_agell
+      strat_ageul <- input$strat_ageul
+      
+      if (!is.null(strat_agell) && !is.na(strat_agell) &&
+          !is.null(strat_ageul) && !is.na(strat_ageul)) {
+        
+        if (strat_agell > strat_ageul) {
+          shinyjs::addClass("strat_agell_container", "red-border")
+          shinyjs::addClass("strat_ageul_container", "red-border")
+        } else {
+          shinyjs::removeClass("strat_agell_container", "red-border")
+          shinyjs::removeClass("strat_ageul_container", "red-border")
+        }
+      } else {
+        shinyjs::removeClass("strat_agell_container", "red-border")
+        shinyjs::removeClass("strat_ageul_container", "red-border")
+      }
+    })
+    
+    observe({
+      agell <- input$agell
+      ageul <- input$ageul
+      
+      if (!is.null(agell) && !is.na(agell) &&
+          !is.null(ageul) && !is.na(ageul)) {
+        
+        if (agell > ageul) {
+          shinyjs::addClass("agell_container", "red-border")
+          shinyjs::addClass("ageul_container", "red-border")
+        } else {
+          shinyjs::removeClass("agell_container", "red-border")
+          shinyjs::removeClass("ageul_container", "red-border")
+        }
+      } else {
+        shinyjs::removeClass("agell_container", "red-border")
+        shinyjs::removeClass("ageul_container", "red-border")
+      }
+    })
+    
+    observe({
+      ref_low <- input$referencelimits.low
+      ref_high <- input$referencelimits.high
+      
+      if (!is.null(ref_low) && !is.na(ref_low) &&
+          !is.null(ref_high) && !is.na(ref_high)) {
+        
+        if (ref_low > ref_high) {
+          shinyjs::addClass("ref_low_container", "red-border")
+          shinyjs::addClass("ref_high_container", "red-border")
+        } else {
+          shinyjs::removeClass("ref_low_container", "red-border")
+          shinyjs::removeClass("ref_high_container", "red-border")
+        }
+      } else {
+        shinyjs::removeClass("ref_low_container", "red-border")
+        shinyjs::removeClass("ref_high_container", "red-border")
+      }
+    })
+  
   # Generate demo data
   observeEvent(input$demo, {
     
@@ -581,15 +651,13 @@ server <- function(input, output, session) {
     dataframe$age[1:demosamplesize] <- round(runif(demosamplesize, min = 1, max = 99), digits = 2)
     dataframe$sex[1:demosamplesize] <- factor(sample(c("M", "F"), demosamplesize, replace = TRUE), levels = sexlist)
     dataframe$result[1:demosamplesize] <- SSlogis(dataframe$age[1:demosamplesize], 5, 60, 6) + rnorm(demosamplesize, mean = 37.5, sd = 3.75)
-    pathsize <- round(demosamplesize / 100, digits = 0) # 10% pathological values??? => 1%!?
+    pathsize <- round(demosamplesize / 10, digits = 0) # 10% pathological values
     dataframe$result[1:pathsize] <- SSlogis(dataframe$age[1:pathsize], 5, 60, 6) + rnorm(pathsize, 20, 5)
     dataframe$result[(1 + pathsize):(3 * pathsize)] <- SSlogis(dataframe$age[(1 + pathsize):(3 * pathsize)], 5, 60, 6) + rnorm(2 * pathsize, 28, 3)
     dataframe$result[(1 + 3 * pathsize):(8 * pathsize)] <- SSlogis(dataframe$age[(1 + 3 * pathsize):(8 * pathsize)], 5, 60, 6) + rnorm(5 * pathsize, 50, 4.5)
     dataframe$result[(1 + 8 * pathsize):(10 * pathsize)] <- SSlogis(dataframe$age[(1 + 8 * pathsize):(10 * pathsize)], 5, 60, 6) + rnorm(2 * pathsize, 60, 10)
     dataframe$result <- round(dataframe$result, 2)
     dataframe$result = as.character(dataframe$result)
-    updateNumericInput(session, "referencelimits.low", value = 30)
-    updateNumericInput(session, "referencelimits.high", value = 45)
     updateNumericInput(session, "agell", value = 18)
     updateNumericInput(session, "ageul", value = 45)
     updateNumericInput(session, "strat_agell", value = 18)
@@ -646,7 +714,6 @@ server <- function(input, output, session) {
     agell <- isolate(input$strat_agell)
     ageul <- isolate(input$strat_ageul)
     agelimitsvalid <- (ageul > 0 && (ageul > agell) && !is.na(agell) && !is.na(ageul))  
-    print(agelimitsvalid)
     if (agelimitsvalid) dataframe <- dataframe[(dataframe$age >= agell) & (dataframe$age <= ageul), ]
   
     updateNumericInput(session, "agell", value = isolate(input$strat_agell))
@@ -859,8 +926,6 @@ server <- function(input, output, session) {
     if (!input$boxtable$collapsed) updateBox("boxtable", action = "toggle")
     
     dataframe = raw_data()
-    methodradio <- isolate(input$methodradio)
-    if (methodradio == 'tmc') dataframe = raw_data_tmc()
     
     sexradioCalc<- isolate(input$sexradioCalc)
     if (sexradioCalc == 'M') dataframe <- dataframe[dataframe$sex == 'M', ]
@@ -887,7 +952,8 @@ server <- function(input, output, session) {
     else {
       if (length(na.omit(dataframe$result)) < 2000) shinyalert("small sample size...", paste("The selected dataset contains only ", length(dataframe$result), " results.\nYou have been warned..."), type = "warning")
       if (length(na.omit(dataframe$result)) > 100000) shinyalert("large sample size...", paste("The selected dataset contains ", length(dataframe$result), " results.\nYou have been warned..."), type = "warning")
-      
+    
+      methodradio <- isolate(input$methodradio)    
       if (methodradio == 'refiner') {
         nbootstrap <- isolate(input$nbootstrap)
         modboxcox <- isolate(input$modboxcox)
