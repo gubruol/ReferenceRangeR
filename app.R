@@ -552,7 +552,11 @@ server <- function(input, output, session) {
   # Cached filtered data
   filtered_data <- reactive({
     dataframe <- raw_data()
-    req(dataframe, nrow(dataframe) > 0)
+    
+    # Check if raw_data is empty or null
+    if (is.null(dataframe) || nrow(dataframe) == 0) {
+      return(data.frame()) # Return empty dataframe instead of NULL
+    }
     
     # Apply sex filter
     sexradio <- input$sexradio
@@ -734,13 +738,14 @@ server <- function(input, output, session) {
       result = c(dataframe_raw$result, rep(NA, tablesize - length(dataframe_raw$result)))[1:tablesize],
       age = c(dataframe_raw$age, rep(NA, tablesize - length(dataframe_raw$age)))[1:tablesize],
       sex = c(as.character(dataframe_raw$sex), rep(NA, tablesize - length(dataframe_raw$sex)))[1:tablesize],
-      trimester = rep(0, tablesize),
+      trimester = rep(NA, tablesize),
       stringsAsFactors = FALSE
     )
     
     # Convert to character for consistency with table rendering
     dataframe$result <- as.character(dataframe$result)
     dataframe$age <- as.character(dataframe$age)
+    dataframe$trimester <- as.numeric(dataframe$trimester)
     
     updateNumericInput(session, "referencelimits.low", value = 0)
     updateNumericInput(session, "referencelimits.high", value = 0)
@@ -776,6 +781,12 @@ server <- function(input, output, session) {
     
     dataframe <- filtered_data()
     
+    # Check for empty data first
+    if (is.null(dataframe) || nrow(dataframe) == 0) {
+      shinyalert("No data available", "Please enter data first before checking for sex differences.", type = "error")
+      return()
+    }
+    
     updateRadioButtons(session,"sexradioCalc", selected= isolate(input$sexradio))
     updateNumericInput(session, "agell", value = isolate(input$strat_agell))
     updateNumericInput(session, "ageul", value = isolate(input$strat_ageul))
@@ -785,10 +796,12 @@ server <- function(input, output, session) {
     casesfiltered = nrow(dataframe)
     if (casesfiltered < cases) dataremoved = TRUE else dataremoved = FALSE
     
-    if (casesfiltered < 500) {
-      shinyalert("insufficient data...", paste("The selected dataset contains ", casesfiltered, " results.\nPlease increase the sample size (minimum n=500)."), type = "error")
-    } else {
-      safely_execute({
+    if (casesfiltered < 100) {
+      shinyalert("insufficient data...", paste("The selected dataset contains ", casesfiltered, " results.\nPlease increase the sample size (minimum n=100)."), type = "error")
+      return()
+    }
+    
+    safely_execute({
         q10 <- quantile(dataframe$result, probs = 0.1)
         q90 <- quantile(dataframe$result, probs = 0.9)
         ylim.min <- q10 - (q90 - q10) / 1.3
@@ -843,7 +856,6 @@ server <- function(input, output, session) {
           )
         })
       }, "Error in sex difference analysis")
-    }
   })
   
   # Visualize drift
@@ -854,6 +866,12 @@ server <- function(input, output, session) {
     
     dataframe <- filtered_data()
     
+    # Check for empty data first
+    if (is.null(dataframe) || nrow(dataframe) == 0) {
+      shinyalert("No data available", "Please enter data first before checking for age drift.", type = "error")
+      return()
+    }
+    
     updateRadioButtons(session,"sexradioCalc", selected= isolate(input$sexradio))
     updateNumericInput(session, "agell", value = isolate(input$strat_agell))
     updateNumericInput(session, "ageul", value = isolate(input$strat_ageul))
@@ -863,10 +881,12 @@ server <- function(input, output, session) {
     # Subsampling for performance with large datasets
     if (cases > 10000) dataframe <- dataframe[sample(1:nrow(dataframe), 10000), ]
     
-    if (cases < 500) {
-      shinyalert("insufficient data...", paste("The selected dataset contains ", cases, " results with given age.\nPlease increase the sample size (minimum n=500)."), type = "error")
-    } else {
-      safely_execute({
+    if (cases < 100) {
+      shinyalert("insufficient data...", paste("The selected dataset contains ", cases, " results.\nPlease increase the sample size (minimum n=100)."), type = "error")
+      return()
+    }
+    
+    safely_execute({
         q10 <- quantile(dataframe$result, probs = 0.1)
         q90 <- quantile(dataframe$result, probs = 0.9)
         ylim.min <- q10 - (q90 - q10) / 1.3
@@ -975,7 +995,6 @@ server <- function(input, output, session) {
           )
         })
       }, "Error in drift analysis")
-    }
   })
   
   # Optimized calculation - removed async overhead for better speed
