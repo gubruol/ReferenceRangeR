@@ -1,11 +1,12 @@
-library(htmltools)
-library(bslib)
 library(admisc)
+library(bslib)
 library(date)
 library(dplyr)
+library(e1071)
 library(fresh)
 library(geoR)
 library(ggplot2)
+library(htmltools)
 library(kableExtra)
 library(knitr)
 library(MASS)
@@ -27,9 +28,6 @@ library(shinyjs)
 library(snpar) # installation: "install.packages('devtools')" and "devtools::install_github('debinqiu/snpar')"
 library(stringr)
 library(tidykosmic) # installation: "install.packages('devtools')" and "devtools::install_github('divinenephron/tidykosmic')"
-library(future)
-library(promises)
-library(e1071)
 
 # Colors
 uoltheme <- create_theme(
