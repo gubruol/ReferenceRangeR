@@ -44,7 +44,7 @@ buttoncolors4 <- "color: #000; background-color: #BBBBBB; border-color: #000;wid
 # Variables
 malelist <- c('male', 'männlich', 'Mann', 'M', 'm')
 femalelist <- c('female', 'weiblich', 'Frau', 'F', 'f', 'W', 'w')
-diverselist = c("D", "X")
+diverselist = c("D", "d", "diverse","Diverse")
 sexlist <- c(malelist, femalelist, diverselist)
 tablesize <- 200000
 input_sex=NULL
@@ -742,7 +742,7 @@ server <- function(input, output, session) {
     
     # Convert to character for consistency with table rendering
     dataframe$result <- as.character(dataframe$result)
-    dataframe$age <- as.character(dataframe$age)
+    dataframe$age <- as.numeric(dataframe$age)
     dataframe$trimester <- as.numeric(dataframe$trimester)
     
     updateNumericInput(session, "referencelimits.low", value = 0)
@@ -754,8 +754,7 @@ server <- function(input, output, session) {
     output$table <- renderRHandsontable(
       rhandsontable(dataframe, width = '450', height = 550, stretchH = "all", rowHeaderWidth = 65) %>%
         hot_col("result", validator = resultvalidator) %>%
-        hot_col("sex", allowInvalid = TRUE) %>%
-        hot_col("trimester", allowInvalid = TRUE)
+        hot_col("sex", allowInvalid = TRUE)
     )
   })
   
