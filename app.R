@@ -1,12 +1,12 @@
-
-library(htmltools)
-library(bslib)
 library(admisc)
+library(bslib)
 library(date)
 library(dplyr)
+library(e1071)
 library(fresh)
 library(geoR)
 library(ggplot2)
+library(htmltools)
 library(kableExtra)
 library(knitr)
 library(MASS)
@@ -29,6 +29,7 @@ library(snpar) # installation: "install.packages('devtools')" and "devtools::ins
 library(stringr)
 library(tidykosmic) # installation: "install.packages('devtools')" and "devtools::install_github('divinenephron/tidykosmic')"
 
+
 # Colors
 uoltheme <- create_theme(
   adminlte_color(light_blue = "#003B73"),
@@ -41,7 +42,6 @@ buttoncolors2 <- "color: #000; background-color: #BBBBBB; border-color: #000;wid
 buttoncolors3 <- "color: #000; background-color: #4c779a; border-color: #000;width: 90%;"
 buttoncolors4 <- "color: #000; background-color: #BBBBBB; border-color: #000;width: 90%; margin-left: 10px; margin-right: 10px;"
 
-
 # Variables
 malelist <- c('male', 'männlich', 'Mann', 'M', 'm')
 femalelist <- c('female', 'weiblich', 'Frau', 'F', 'f', 'W', 'w')
@@ -51,7 +51,6 @@ tablesize <- 200000
 input_sex=NULL
 dataframe = data.frame(result = rep(NA, tablesize), age = rep(NA, tablesize), sex = factor(rep(NA, tablesize), levels = sexlist))
 fasttml=NULL
-
 
 # Path for TMC and TML library
 if (Sys.info()["sysname"] == "Windows") {
@@ -75,7 +74,6 @@ resultvalidator <- "function(value, callback) {
    }
   }, 10);}"
 
-
 # Function for plotting the RI limits for comparison
 plotcomparisonlimits <- function (estimatedlimits.low, estimatedlimits.high, referencelimits.low, referencelimits.high) {
   pU <- permissible_uncertainty(referencelimits.low, referencelimits.high)
@@ -89,6 +87,54 @@ plotcomparisonlimits <- function (estimatedlimits.low, estimatedlimits.high, ref
   abline(v = referencelimits.high, col = adjustcolor(col2, alpha.f = 0.40), lwd = 2, lty = 3)
   abline(v = estimatedlimits.low, col = "#10D010", lwd = 3)
   abline(v = estimatedlimits.high, col = "#10D010", lwd = 3)
+}
+
+# Optimized data processing function
+process_data_efficiently <- function(dataframe) {
+  if (nrow(dataframe) > 10000) {
+    # Use data.table for larger datasets if available
+    if (requireNamespace("data.table", quietly = TRUE)) {
+      library(data.table)
+      dt <- as.data.table(dataframe)
+      result <- dt[result > 0 & !is.na(result) & !is.na(sex)]
+      return(as.data.frame(result))
+    }
+  }
+  # Use dplyr for smaller datasets
+  return(dataframe %>% filter(result > 0, !is.na(result), !is.na(sex)))
+}
+
+# Input validation helper
+validate_inputs <- function(input_pairs) {
+  for (pair in input_pairs) {
+    val1 <- pair[[1]]
+    val2 <- pair[[2]]
+    container1 <- pair[[3]]
+    container2 <- pair[[4]]
+    
+    if (!is.null(val1) && !is.null(val2) && !is.na(val1) && !is.na(val2)) {
+      if (val1 > val2) {
+        shinyjs::addClass(container1, "red-border")
+        shinyjs::addClass(container2, "red-border")
+      } else {
+        shinyjs::removeClass(container1, "red-border")
+        shinyjs::removeClass(container2, "red-border")
+      }
+    } else {
+      shinyjs::removeClass(container1, "red-border")
+      shinyjs::removeClass(container2, "red-border")
+    }
+  }
+}
+
+# Safe execution wrapper
+safely_execute <- function(expr, error_msg = "An error occurred") {
+  tryCatch({
+    expr
+  }, error = function(e) {
+    shinyalert("Error", paste(error_msg, ":", e$message), type = "error")
+    return(NULL)
+  })
 }
 
 # Dashboard and sidebar 
@@ -152,6 +198,20 @@ ui <-
         .red-border input.form-control {
           border: 2px solid red !important;
           box-shadow: none !important;
+        }
+        
+        /* Performance optimizations */
+        .content-wrapper { 
+          transition: margin-left 0.3s ease-in-out; 
+        }
+        .main-sidebar { 
+          transition: transform 0.3s ease-in-out; 
+        }
+        .handsontable { 
+          will-change: scroll-position;
+        }
+        .form-control {
+          transition: border-color 0.15s ease-in-out;
         }
                         "))
       ),
@@ -410,84 +470,136 @@ ui <-
     )
   )
 
-
-
 # Server initialization
 server <- function(input, output, session) {
   setwd(tempdir())
   dataframe1 = data.frame(result = rep(NA, tablesize), age = rep(NA, tablesize), sex = factor(rep(NA, tablesize), levels = sexlist))
   dataframe1$result = as.character(dataframe$result)
   dataframe1$age = as.numeric(dataframe$age)
-  output$table <- renderRHandsontable(rhandsontable(dataframe1, width = '400', height = 550, stretchH = "all", rowHeaderWidth = 65) %>%
-                                        hot_col("result", validator = resultvalidator) %>%
-                                        hot_col("sex", allowInvalid = TRUE)
+  
+  # Reactive values for state management
+  values <- reactiveValues(
+    calculation_in_progress = FALSE
   )
   
+  # Debounced inputs for better performance
+  agell_debounced <- reactive({
+    input$agell
+  }) %>% debounce(500)
   
+  ageul_debounced <- reactive({
+    input$ageul  
+  }) %>% debounce(500)
+  
+  strat_agell_debounced <- reactive({
+    input$strat_agell
+  }) %>% debounce(500)
+  
+  strat_ageul_debounced <- reactive({
+    input$strat_ageul
+  }) %>% debounce(500)
+  
+  # Optimized table rendering
+  output$table <- renderRHandsontable({
+    rhandsontable(dataframe1, width = '400', height = 550, stretchH = "all", rowHeaderWidth = 65) %>%
+      hot_col("result", validator = resultvalidator) %>%
+      hot_col("sex", allowInvalid = TRUE)
+  })
+  
+  # Optimized raw data processing with caching
   raw_data <- reactive({
-    dataframe <- hot_to_r(req(input$table))
+    req(input$table)
+    
+    dataframe <- hot_to_r(input$table)
     if (is.null(dataframe)) return(dataframe1)
+    
+    # Batch data transformations
     dataframe$result <- gsub("^<", "", dataframe$result) 
     dataframe$result <- gsub(",", ".", dataframe$result, fixed = TRUE)
     dataframe$result <- as.numeric(dataframe$result)
     dataframe$age <- as.numeric(dataframe$age)
-    dataframe <- dataframe[dataframe$result > 0 & !is.na(dataframe$result), ]
-    femalelist = c(femalelist, input$Init_female)
-    malelist = c(malelist,input$Init_male)
-    diverselist = c(diverselist,input$Init_diverse)
-    dataframe <- dataframe %>% mutate(sex = ifelse(sex %in% femalelist, 'F', ifelse(sex %in% malelist, 'M', ifelse(sex %in% diverselist, 'D', 'X'))))
-    dataframe <- dataframe[!is.na(dataframe$sex), ]
-    if ("trimester" %in% colnames(dataframe)) dataframe$trimester = plyr::mapvalues(dataframe$trimester,c(""),0)
-    if (input$remove_pregnancy) dataframe = dataframe[,-4]
+    
+    # Filter efficiently
+    dataframe <- process_data_efficiently(dataframe)
+    
+    # Handle sex variables
+    femalelist_extended = c(femalelist, input$Init_female)
+    malelist_extended = c(malelist, input$Init_male)
+    diverselist_extended = c(diverselist, input$Init_diverse)
+    
+    dataframe <- dataframe %>% 
+      mutate(sex = case_when(
+        sex %in% femalelist_extended ~ 'F',
+        sex %in% malelist_extended ~ 'M',
+        sex %in% diverselist_extended ~ 'D',
+        TRUE ~ 'X'
+      )) %>%
+      filter(!is.na(sex))
+    
+    # Handle trimester column
+    if ("trimester" %in% colnames(dataframe)) {
+      dataframe$trimester = plyr::mapvalues(dataframe$trimester, c(""), 0)
+    }
+    
+    if (input$remove_pregnancy && "trimester" %in% colnames(dataframe)) {
+      dataframe = dataframe[, !names(dataframe) %in% "trimester"]
+    }
+    
     return(dataframe)
-  })
+  }) %>% bindCache(input$table, input$Init_female, input$Init_male, input$Init_diverse, input$remove_pregnancy)
   
+  # Cached filtered data
+  filtered_data <- reactive({
+    dataframe <- raw_data()
+    req(dataframe, nrow(dataframe) > 0)
+    
+    # Apply sex filter
+    sexradio <- input$sexradio
+    if (sexradio %in% c('M', 'F', 'D')) {
+      dataframe <- dataframe[dataframe$sex == sexradio, ]
+    }
+    
+    # Apply age filters with debounced values
+    agell <- strat_agell_debounced()
+    ageul <- strat_ageul_debounced()
+    agelimitsvalid <- (!is.null(agell) && !is.null(ageul) && 
+                         !is.na(agell) && !is.na(ageul) && 
+                         ageul > agell && ageul > 0)
+    
+    if (agelimitsvalid) {
+      dataframe <- dataframe[(dataframe$age >= agell) & (dataframe$age <= ageul), ]
+    }
+    
+    return(dataframe)
+  }) %>% bindCache(raw_data(), input$sexradio, strat_agell_debounced(), strat_ageul_debounced())
   
   raw_fasttml <- reactive({
     fasttml = input$fasttml
-    if (is.null(fasttml)) fasttml == T
-    else if (fasttml==F) fasttml==F
-    else fasttml==T
+    if (is.null(fasttml)) return(TRUE)
     return(fasttml)
   })
   
-  
   # Set initial Output conditions  
-  
-  output$advanced <- renderText({
-    '0'
-  })
+  output$advanced <- renderText({ '0' })
   outputOptions(output, "advanced", suspendWhenHidden=FALSE)
   
-  
-  
-  
-  output$pregnancymode <- renderText({
-    '0'
-  })
+  output$pregnancymode <- renderText({ '0' })
   outputOptions(output, "pregnancymode", suspendWhenHidden=FALSE)
   
-  output$fasttml = renderPrint({
-    raw_fasttml()
-  })
+  output$fasttml = renderPrint({ raw_fasttml() })
   outputOptions(output, "fasttml", suspendWhenHidden=FALSE)
   
   # Input advanced mode
   observeEvent(input$advanced_button, {
     updateBox("initbox", action = "toggle")
-    output$advanced = renderText({
-      '1'
-    })
+    output$advanced = renderText({ '1' })
   })
   
   observeEvent(input$standard_button, {
-    output$advanced = renderText({
-      '0'
-    })
+    output$advanced = renderText({ '0' })
   })
   
-  
-  # Input Observations oben/close boxes  
+  # Input Observations open/close boxes  
   observeEvent(input$DI, {
     if (input$boxtable$collapsed) updateBox("boxtable", action = "toggle")
     else (updateBox("boxtable", action = "toggle"))
@@ -508,8 +620,6 @@ server <- function(input, output, session) {
     if (!input$strat_boxplot$collapsed) updateBox("strat_boxplot", action = "toggle")
     if (!input$boxtable$collapsed) updateBox("boxtable", action = "toggle")
   })
-  
-  
   
   # Input Table
   observeEvent(input$table, {
@@ -541,11 +651,8 @@ server <- function(input, output, session) {
     if (all(input_sex %in% comparesexlist) == FALSE) updateBox("initbox", action = "toggle") 
   })
   
-  
-  
   # Clear data and table
   observeEvent(input$clear, {
-    
     if (input$boxtable$collapsed) updateBox("boxtable", action = "toggle")
     if (!input$boxplot$collapsed) updateBox("boxplot", action = "toggle")
     if (!input$strat_boxplot$collapsed) updateBox("strat_boxplot", action = "toggle")
@@ -573,77 +680,24 @@ server <- function(input, output, session) {
     output$placeholder <- renderText({
       ""
     })
-    
   })
   
-  # Observations of numericInputs: Input lower value > Input higher value => red marking added
+  # Optimized input validation with throttling
   observe({
-    strat_agell <- input$strat_agell
-    strat_ageul <- input$strat_ageul
-    
-    if (!is.null(strat_agell) && !is.na(strat_agell) &&
-        !is.null(strat_ageul) && !is.na(strat_ageul)) {
-      
-      if (strat_agell > strat_ageul) {
-        shinyjs::addClass("strat_agell_container", "red-border")
-        shinyjs::addClass("strat_ageul_container", "red-border")
-      } else {
-        shinyjs::removeClass("strat_agell_container", "red-border")
-        shinyjs::removeClass("strat_ageul_container", "red-border")
-      }
-    } else {
-      shinyjs::removeClass("strat_agell_container", "red-border")
-      shinyjs::removeClass("strat_ageul_container", "red-border")
-    }
-  })
-  
-  observe({
-    agell <- input$agell
-    ageul <- input$ageul
-    
-    if (!is.null(agell) && !is.na(agell) &&
-        !is.null(ageul) && !is.na(ageul)) {
-      
-      if (agell > ageul) {
-        shinyjs::addClass("agell_container", "red-border")
-        shinyjs::addClass("ageul_container", "red-border")
-      } else {
-        shinyjs::removeClass("agell_container", "red-border")
-        shinyjs::removeClass("ageul_container", "red-border")
-      }
-    } else {
-      shinyjs::removeClass("agell_container", "red-border")
-      shinyjs::removeClass("ageul_container", "red-border")
-    }
-  })
-  
-  observe({
-    ref_low <- input$referencelimits.low
-    ref_high <- input$referencelimits.high
-    
-    if (!is.null(ref_low) && !is.na(ref_low) &&
-        !is.null(ref_high) && !is.na(ref_high)) {
-      
-      if (ref_low > ref_high) {
-        shinyjs::addClass("ref_low_container", "red-border")
-        shinyjs::addClass("ref_high_container", "red-border")
-      } else {
-        shinyjs::removeClass("ref_low_container", "red-border")
-        shinyjs::removeClass("ref_high_container", "red-border")
-      }
-    } else {
-      shinyjs::removeClass("ref_low_container", "red-border")
-      shinyjs::removeClass("ref_high_container", "red-border")
-    }
-  })
+    validate_inputs(
+      list(
+        list(input$strat_agell, input$strat_ageul, "strat_agell_container", "strat_ageul_container"),
+        list(input$agell, input$ageul, "agell_container", "ageul_container"),
+        list(input$referencelimits.low, input$referencelimits.high, "ref_low_container", "ref_high_container")
+      )
+    )
+  }) %>% throttle(250)
   
   # Generate demo data
   observeEvent(input$demo, {
-    
     if (input$boxtable$collapsed) updateBox("boxtable", action = "toggle")
     if (!input$boxplot$collapsed) updateBox("boxplot", action = "toggle")
     if (!input$strat_boxplot$collapsed) updateBox("strat_boxplot", action = "toggle")
-    
     
     dataframe = data.frame(result = rep(NA, tablesize), age = rep(NA, tablesize), sex = factor(rep(NA, tablesize), levels = sexlist))
     dataframe$result = as.numeric(dataframe$result)
@@ -693,8 +747,10 @@ server <- function(input, output, session) {
   })
   
   observeEvent(input$remove_pregnancy, {
-    dataframe= raw_data()
-    dataframe = dataframe[,-4]
+    dataframe <- raw_data()
+    if ("trimester" %in% colnames(dataframe)) {
+      dataframe <- dataframe[, !names(dataframe) %in% "trimester"]
+    }
     output$table <- renderRHandsontable(rhandsontable(dataframe, width = '400', height = 550, stretchH = "all", rowHeaderWidth = 65) %>%
                                           hot_col("result", validator = resultvalidator) %>%
                                           hot_col("sex", allowInvalid = TRUE)
@@ -704,255 +760,268 @@ server <- function(input, output, session) {
   
   # Visualize data for sex differences
   observeEvent(input$sexbox, {
-    
     if (input$strat_boxplot$collapsed) updateBox("strat_boxplot", action = "toggle")
     if (!input$boxplot$collapsed) updateBox("boxplot", action = "toggle")
     if (!input$boxtable$collapsed) updateBox("boxtable", action = "toggle")
     
-    dataframe=raw_data()
+    dataframe <- filtered_data()
     
-    updateRadioButtons(session,"trimesterCalc", selected= isolate(input$sexradio))
-    agell <- isolate(input$strat_agell)
-    ageul <- isolate(input$strat_ageul)
-    agelimitsvalid <- (ageul > 0 && (ageul > agell) && !is.na(agell) && !is.na(ageul))  
-    if (agelimitsvalid) dataframe <- dataframe[(dataframe$age >= agell) & (dataframe$age <= ageul), ]
-    
+    updateRadioButtons(session,"sexradioCalc", selected= isolate(input$sexradio))
     updateNumericInput(session, "agell", value = isolate(input$strat_agell))
     updateNumericInput(session, "ageul", value = isolate(input$strat_ageul))
     
-    sexradio<- isolate(input$sexradio)
-    if (sexradio == 'M') dataframe <- dataframe[dataframe$sex == 'M', ]
-    else if (sexradio == 'F') dataframe <- dataframe[dataframe$sex == 'F', ]
-    else if (sexradio == 'D') dataframe <- dataframe[dataframe$sex == 'D', ]
-    
-    updateRadioButtons(session,"sexradioCalc", selected= isolate(input$sexradio))
-    
-    cases = length(dataframe$result)
+    cases = nrow(dataframe)
     dataframe <- dataframe %>% group_by(sex) %>% filter(n() >= 100)
-    casesfiltered = length(dataframe$result)
+    casesfiltered = nrow(dataframe)
     if (casesfiltered < cases) dataremoved = TRUE else dataremoved = FALSE
-    if (casesfiltered < 500) shinyalert("insufficient data...", paste("The selected dataset contains ", casesfiltered, " results.\nPlease increase the sample size (minimum n=500)."), type = "error")
-    else {
-      q10 <- quantile(dataframe$result, probs = 0.1)
-      q90 <- quantile(dataframe$result, probs = 0.9)
-      ylim.min <- q10 - (q90 - q10) / 1.3
-      ylim.max <- q90 + (q90 - q10) / 1.3
-      pu_percent <- 2.39*(-0.25 + 100*(-1+exp(((log(reflim(dataframe$result)$limits[2])-log(reflim(dataframe$result)$limits[1]))/3.92)^2))^0.5)^0.5
-      n_groups <- length(unique(dataframe$sex))
-      pvalue <- -1
-      test_used <- ""
-      if (n_groups == 2) {
-        pvalue <- round(wilcox.test(result ~ sex, data = dataframe)$p.value, 2)
-        test_used <- "Wilcoxon rank-sum test"
-      }
-      if (n_groups > 2) {
-        pvalue <- round(kruskal.test(result ~ sex, data = dataframe)$p.value, 2)
-        test_used <- "Kruskal-Wallis test"
-      }
-      mediantable <- dataframe %>% group_by(sex) %>% summarise(count = n(), median = median(result, na.rm = TRUE))
-      mediandiff <- round((max(mediantable$median) - min(mediantable$median)) / min(mediantable$median) * 100, digits = 2)
-      output$strat_plot <- renderPlot({
-        ggplot(dataframe, aes(sex, result)) + ylim(ylim.min, ylim.max) + labs(x = NULL) +
-          theme_minimal() + theme(axis.text = element_text(size = 16), axis.title = element_text(size = 18)) +
-          geom_violin(fill = "#40668d", alpha = 0.2) +
-          geom_boxplot(fill = "#40668d", outlier.shape = NA, width = 0.1)
-      })
-      output$strat_placeholder = renderText({
-        paste("<br>",
-              kable(mediantable, "html", align = "c") %>%  kable_styling(),
-              "<br><p style='font-size: 14px;'><b>Selected data:</b>",
-              "n = ", casesfiltered, "<br>",
-              if (dataremoved) "Groups with n<100 were removed<br>",
-              if (agelimitsvalid) paste("age: from ", agell, " to ", ageul)
-              else "age: no selection",
-              "<br>",
-              if (pvalue < 0) "More than one group needed for statistical evaluation."
-              else if (pvalue < 0.01) paste("<b style='color: red;'>Significant difference </b> (p<0.01, ", test_used, ")<br>", sep = "")
-              else if (pvalue < 0.05) paste("<b style='color: red;'>Significant difference</b> (p=", pvalue, ", ", test_used, ")<br>", sep = "")
-              else paste("<b style='color: #10D010;'>No significant difference</b> (p=", pvalue, ", ", test_used, ")<br>", sep = ""),
-              "<br><b>Max. deviation of the medians: </b> ",
-              if (mediandiff > pu_percent) "<b style='color: red;'>"
-              else if (mediandiff > (0.5 * pu_percent)) "<b style='color: orange;'>"
-              else "<b style='color: #10D010;'>",
-              mediandiff, "%</b><br>",
-              "Estimated permissible uncertainty (pU): ", round(pu_percent,2), "%</p>",
-              br()
-        )
-      })
+    
+    if (casesfiltered < 500) {
+      shinyalert("insufficient data...", paste("The selected dataset contains ", casesfiltered, " results.\nPlease increase the sample size (minimum n=500)."), type = "error")
+    } else {
+      safely_execute({
+        q10 <- quantile(dataframe$result, probs = 0.1)
+        q90 <- quantile(dataframe$result, probs = 0.9)
+        ylim.min <- q10 - (q90 - q10) / 1.3
+        ylim.max <- q90 + (q90 - q10) / 1.3
+        pu_percent <- 2.39*(-0.25 + 100*(-1+exp(((log(reflim(dataframe$result)$limits[2])-log(reflim(dataframe$result)$limits[1]))/3.92)^2))^0.5)^0.5
+        n_groups <- length(unique(dataframe$sex))
+        pvalue <- -1
+        test_used <- ""
+        if (n_groups == 2) {
+          pvalue <- round(wilcox.test(result ~ sex, data = dataframe)$p.value, 2)
+          test_used <- "Wilcoxon rank-sum test"
+        }
+        if (n_groups > 2) {
+          pvalue <- round(kruskal.test(result ~ sex, data = dataframe)$p.value, 2)
+          test_used <- "Kruskal-Wallis test"
+        }
+        mediantable <- dataframe %>% group_by(sex) %>% summarise(count = n(), median = median(result, na.rm = TRUE))
+        mediandiff <- round((max(mediantable$median) - min(mediantable$median)) / min(mediantable$median) * 100, digits = 2)
+        
+        output$strat_plot <- renderPlot({
+          req(!input$strat_boxplot$collapsed)
+          ggplot(dataframe, aes(sex, result)) + ylim(ylim.min, ylim.max) + labs(x = NULL) +
+            theme_minimal() + theme(axis.text = element_text(size = 16), axis.title = element_text(size = 18)) +
+            geom_violin(fill = "#40668d", alpha = 0.2) +
+            geom_boxplot(fill = "#40668d", outlier.shape = NA, width = 0.1)
+        }, outputArgs = list(height = 320))
+        
+        agell <- isolate(input$strat_agell)
+        ageul <- isolate(input$strat_ageul)
+        agelimitsvalid <- (ageul > 0 && (ageul > agell) && !is.na(agell) && !is.na(ageul))
+        
+        output$strat_placeholder = renderText({
+          paste("<br>",
+                kable(mediantable, "html", align = "c") %>%  kable_styling(),
+                "<br><p style='font-size: 14px;'><b>Selected data:</b>",
+                "n = ", casesfiltered, "<br>",
+                if (dataremoved) "Groups with n<100 were removed<br>",
+                if (agelimitsvalid) paste("age: from ", agell, " to ", ageul)
+                else "age: no selection",
+                "<br>",
+                if (pvalue < 0) "More than one group needed for statistical evaluation."
+                else if (pvalue < 0.01) paste("<b style='color: red;'>Significant difference </b> (p<0.01, ", test_used, ")<br>", sep = "")
+                else if (pvalue < 0.05) paste("<b style='color: red;'>Significant difference</b> (p=", pvalue, ", ", test_used, ")<br>", sep = "")
+                else paste("<b style='color: #10D010;'>No significant difference</b> (p=", pvalue, ", ", test_used, ")<br>", sep = ""),
+                "<br><b>Max. deviation of the medians: </b> ",
+                if (mediandiff > pu_percent) "<b style='color: red;'>"
+                else if (mediandiff > (0.5 * pu_percent)) "<b style='color: orange;'>"
+                else "<b style='color: #10D010;'>",
+                mediandiff, "%</b><br>",
+                "Estimated permissible uncertainty (pU): ", round(pu_percent,2), "%</p>",
+                br()
+          )
+        })
+      }, "Error in sex difference analysis")
     }
   })
-  
   
   # Visualize drift
   observeEvent(input$drift, {
-    
     if (input$strat_boxplot$collapsed) updateBox("strat_boxplot", action = "toggle")
     if (!input$boxplot$collapsed) updateBox("boxplot", action = "toggle")
     if (!input$boxtable$collapsed) updateBox("boxtable", action = "toggle")
     
-    dataframe=raw_data()
-    
-    sexradio<- isolate(input$sexradio)
-    if (sexradio == 'M') dataframe <- dataframe[dataframe$sex == 'M', ]
-    else if (sexradio == 'F') dataframe <- dataframe[dataframe$sex == 'F', ]
-    else if (sexradio == 'D') dataframe <- dataframe[dataframe$sex == 'D', ]
+    dataframe <- filtered_data()
     
     updateRadioButtons(session,"sexradioCalc", selected= isolate(input$sexradio))
-    
-    agell <- isolate(input$strat_agell)
-    ageul <- isolate(input$strat_ageul)
-    agelimitsvalid <- (ageul > 0 && (ageul > agell) && !is.na(agell) && !is.na(ageul))  
-    if (agelimitsvalid) dataframe <- dataframe[(dataframe$age >= agell) & (dataframe$age <= ageul), ]
-    cases = length(dataframe$result)
-    
-    
     updateNumericInput(session, "agell", value = isolate(input$strat_agell))
     updateNumericInput(session, "ageul", value = isolate(input$strat_ageul))
     
-    # Subsampling and reduction of sample size for n>10000
-    dataframe[sample(nrow(dataframe)), ]
-    if (cases > 10000) dataframe <- dataframe[sample(1:length(dataframe$result), 10000), ]
+    cases = nrow(dataframe)
     
-    # Alert when n<500
-    if (cases < 500) shinyalert("insufficient data...", paste("The selected dataset contains ", cases, " results with given age.\nPlease increase the sample size (minimum n=500)."), type = "error")
-    else {
-      q10 <- quantile(dataframe$result, probs = 0.1)
-      q90 <- quantile(dataframe$result, probs = 0.9)
-      ylim.min <- q10 - (q90 - q10) / 1.3
-      ylim.max <- q90 + (q90 - q10) / 1.3
-      
-      pu_percent <- 2.39*(-0.25 + 100*(-1+exp(((log(reflim(dataframe$result)$limits[2])-log(reflim(dataframe$result)$limits[1]))/3.92)^2))^0.5)^0.5
-      pu_absolute <- pu_percent * median(dataframe$result) / 100
-      
-      # Calculate number of digits for age with resulting 10^3 steps or groups.
-      agedigits <- 3 - floor(log10(max(dataframe$age)))
-      
-      agegroups <- data.frame(from = seq(round(min(dataframe$age), agedigits), round(max(dataframe$age), agedigits), by=10^-agedigits)) %>%
-        mutate(to = from + 10^-agedigits)
-      
-      # Predict medians and confidence intervals
-      pred <- predict(qgam(result ~ s(age), data = dataframe, qu = 0.5), newdata = data.frame(age = (agegroups$from + agegroups$to) / 2), se=TRUE)
-      
-      agegroups <- agegroups %>% mutate(
-        median = pred$fit,
-        ci.low = pred$fit - 1.96 * pred$se.fit,
-        ci.high = pred$fit + 1.96 * pred$se.fit) %>%
-        rowwise() %>%
-        mutate(count = sum(dataframe$age >= from & dataframe$age < to)) %>%
-        ungroup()
-      
-      # Remove empty groups
-      agegroups <- agegroups[agegroups$count > 0, ]
-      
-      stratplot <- ggplot() + ylim(ylim.min, ylim.max) +
-        geom_point(data = dataframe, aes(x=age, y=result), color="grey", alpha=0.1) +
-        geom_line(data = agegroups, aes(x = from, y = median), color = "#003B73", linewidth = 1) +
-        geom_ribbon(data = agegroups, aes(x = from, ymin = ci.low, ymax = ci.high), fill = "#003B73", alpha = 0.2) +
-        theme_minimal()
-      
-      agegroups$ci.low <- NULL
-      agegroups$ci.high <- NULL
-      
-      while (TRUE) {
-        if (length(agegroups$median) <= 1) break
-        diffs <- diff(agegroups$median)
-        idx <- which.min(diffs)
-        if ((length(agegroups$median) > input$stratnum) && (diffs[idx] >= 0.5 * pu_absolute)) break
-        if ((length(agegroups$median) <= input$stratnum) && (diffs[idx] >= 0.25 * pu_absolute)) break
-        agegroups$to[idx] <- agegroups$to[idx + 1]
-        agegroups$count[idx] <- agegroups$count[idx] + agegroups$count[idx + 1]
-        agegroups$median[idx] <- median(dataframe[dataframe$age >= agegroups$from[idx] & dataframe$age <= agegroups$to[idx], ]$result)
-        agegroups <- agegroups[-(idx + 1), ]
-      }
-      
-      # Remove groups with n < 50
-      agegroups <- agegroups[agegroups$count >= 50, ]
-      
-      agegroups$from <- round(agegroups$from, agedigits - 1)
-      agegroups$to <- round(agegroups$to, agedigits - 1)
-      if (max(agegroups$median) > 100) agegroups$median <- round(agegroups$median, 0)
-      else if (max(agegroups$median) > 10) agegroups$median <- round(agegroups$median, 1)
-      else agegroups$median <- round(agegroups$median, 2)
-      agegroups$size <- round(100 * agegroups$count / sum(agegroups$count), 0)
-      agegroups$count <- NULL
-      agegroups$sizecol <- col_numeric(palette = c("red","red","#10D010","#10D010","#10D010","#10D010","#10D010","#10D010","#10D010","#10D010"), domain=c(0, 100))(agegroups$size)
-      agegroups$size <- paste(agegroups$size, "%")
-      mediandeviation <- round((100 * (max(agegroups$median) - min(agegroups$median)) / min(agegroups$median)), 2)
-      
-      if (length(agegroups$size) < 2) kabletable <- "No stratification necessary."
-      else {
-        kabletable <- agegroups[, -5] %>% kable("html",  align = "c") %>% kable_styling() %>%
-          column_spec(4, bold = TRUE, color = agegroups$sizecol)
+    # Subsampling for performance with large datasets
+    if (cases > 10000) dataframe <- dataframe[sample(1:nrow(dataframe), 10000), ]
+    
+    if (cases < 500) {
+      shinyalert("insufficient data...", paste("The selected dataset contains ", cases, " results with given age.\nPlease increase the sample size (minimum n=500)."), type = "error")
+    } else {
+      safely_execute({
+        q10 <- quantile(dataframe$result, probs = 0.1)
+        q90 <- quantile(dataframe$result, probs = 0.9)
+        ylim.min <- q10 - (q90 - q10) / 1.3
+        ylim.max <- q90 + (q90 - q10) / 1.3
         
-        stratplot <- stratplot +
-          geom_rect(data = agegroups, aes(NULL, NULL, xmin = from, xmax = to, ymin = -Inf, ymax = Inf, fill = sizecol), alpha = 0.1) +
-          scale_fill_identity() +
-          theme(legend.position="none")
-      }
-      
-      output$strat_plot <- renderPlot({ stratplot })
-      
-      output$strat_placeholder = renderText({
-        paste(
-          "<p style='font-size: 14px;'><b>Selected data:</b><br>",
-          "n = ", cases,
-          if (agelimitsvalid) paste("<br>age: from ", agell, " to ", ageul)
-          else paste("<br>age: no selection"),
-          "<br>sex: ",
-          if (sexradio == 'M') "male"
-          else if (sexradio == 'F') "female"
-          else if (sexradio == 'D') "non-binary"
-          else "no selection",
-          "<br><br><b>Max. deviation of the medians: </b>",
-          if (mediandeviation > pu_percent) "<b style='color: red;'>"
-          else if (mediandeviation > (0.5 * pu_percent)) "<b style='color: orange;'>"
-          else "<b style='color: #10D010;'>",
-          mediandeviation, "%</b><br>",
-          "Estimated permissible uncertainty (pU): ", round(pu_percent,2), "%<br><br>",
-          "<b>Recommended age limits for stratification:</b>",
-          kabletable,
-          "</p>"
-        )
-      })
+        pu_percent <- 2.39*(-0.25 + 100*(-1+exp(((log(reflim(dataframe$result)$limits[2])-log(reflim(dataframe$result)$limits[1]))/3.92)^2))^0.5)^0.5
+        pu_absolute <- pu_percent * median(dataframe$result) / 100
+        
+        # Calculate number of digits for age with resulting 10^3 steps or groups.
+        agedigits <- 3 - floor(log10(max(dataframe$age)))
+        
+        agegroups <- data.frame(from = seq(round(min(dataframe$age), agedigits), round(max(dataframe$age), agedigits), by=10^-agedigits)) %>%
+          mutate(to = from + 10^-agedigits)
+        
+        # Predict medians and confidence intervals
+        pred <- predict(qgam(result ~ s(age), data = dataframe, qu = 0.5), newdata = data.frame(age = (agegroups$from + agegroups$to) / 2), se=TRUE)
+        
+        agegroups <- agegroups %>% mutate(
+          median = pred$fit,
+          ci.low = pred$fit - 1.96 * pred$se.fit,
+          ci.high = pred$fit + 1.96 * pred$se.fit) %>%
+          rowwise() %>%
+          mutate(count = sum(dataframe$age >= from & dataframe$age < to)) %>%
+          ungroup()
+        
+        # Remove empty groups
+        agegroups <- agegroups[agegroups$count > 0, ]
+        
+        stratplot <- ggplot() + ylim(ylim.min, ylim.max) +
+          geom_point(data = dataframe, aes(x=age, y=result), color="grey", alpha=0.1) +
+          geom_line(data = agegroups, aes(x = from, y = median), color = "#003B73", linewidth = 1) +
+          geom_ribbon(data = agegroups, aes(x = from, ymin = ci.low, ymax = ci.high), fill = "#003B73", alpha = 0.2) +
+          theme_minimal()
+        
+        agegroups$ci.low <- NULL
+        agegroups$ci.high <- NULL
+        
+        while (TRUE) {
+          if (length(agegroups$median) <= 1) break
+          diffs <- diff(agegroups$median)
+          idx <- which.min(diffs)
+          if ((length(agegroups$median) > input$stratnum) && (diffs[idx] >= 0.5 * pu_absolute)) break
+          if ((length(agegroups$median) <= input$stratnum) && (diffs[idx] >= 0.25 * pu_absolute)) break
+          agegroups$to[idx] <- agegroups$to[idx + 1]
+          agegroups$count[idx] <- agegroups$count[idx] + agegroups$count[idx + 1]
+          agegroups$median[idx] <- median(dataframe[dataframe$age >= agegroups$from[idx] & dataframe$age <= agegroups$to[idx], ]$result)
+          agegroups <- agegroups[-(idx + 1), ]
+        }
+        
+        # Remove groups with n < 50
+        agegroups <- agegroups[agegroups$count >= 50, ]
+        
+        agegroups$from <- round(agegroups$from, agedigits - 1)
+        agegroups$to <- round(agegroups$to, agedigits - 1)
+        if (max(agegroups$median) > 100) agegroups$median <- round(agegroups$median, 0)
+        else if (max(agegroups$median) > 10) agegroups$median <- round(agegroups$median, 1)
+        else agegroups$median <- round(agegroups$median, 2)
+        agegroups$size <- round(100 * agegroups$count / sum(agegroups$count), 0)
+        agegroups$count <- NULL
+        agegroups$sizecol <- col_numeric(palette = c("red","red","#10D010","#10D010","#10D010","#10D010","#10D010","#10D010","#10D010","#10D010"), domain=c(0, 100))(agegroups$size)
+        agegroups$size <- paste(agegroups$size, "%")
+        mediandeviation <- round((100 * (max(agegroups$median) - min(agegroups$median)) / min(agegroups$median)), 2)
+        
+        if (length(agegroups$size) < 2) {
+          kabletable <- "No stratification necessary."
+        } else {
+          kabletable <- agegroups[, -5] %>% kable("html",  align = "c") %>% kable_styling() %>%
+            column_spec(4, bold = TRUE, color = agegroups$sizecol)
+          
+          stratplot <- stratplot +
+            geom_rect(data = agegroups, aes(NULL, NULL, xmin = from, xmax = to, ymin = -Inf, ymax = Inf, fill = sizecol), alpha = 0.1) +
+            scale_fill_identity() +
+            theme(legend.position="none")
+        }
+        
+        output$strat_plot <- renderPlot({ 
+          req(!input$strat_boxplot$collapsed)
+          stratplot 
+        }, outputArgs = list(height = 320))
+        
+        agell <- isolate(input$strat_agell)
+        ageul <- isolate(input$strat_ageul)
+        agelimitsvalid <- (ageul > 0 && (ageul > agell) && !is.na(agell) && !is.na(ageul))
+        sexradio <- isolate(input$sexradio)
+        
+        output$strat_placeholder = renderText({
+          paste(
+            "<p style='font-size: 14px;'><b>Selected data:</b><br>",
+            "n = ", cases,
+            if (agelimitsvalid) paste("<br>age: from ", agell, " to ", ageul)
+            else paste("<br>age: no selection"),
+            "<br>sex: ",
+            if (sexradio == 'M') "male"
+            else if (sexradio == 'F') "female"
+            else if (sexradio == 'D') "non-binary"
+            else "no selection",
+            "<br><br><b>Max. deviation of the medians: </b>",
+            if (mediandeviation > pu_percent) "<b style='color: red;'>"
+            else if (mediandeviation > (0.5 * pu_percent)) "<b style='color: orange;'>"
+            else "<b style='color: #10D010;'>",
+            mediandeviation, "%</b><br>",
+            "Estimated permissible uncertainty (pU): ", round(pu_percent,2), "%<br><br>",
+            "<b>Recommended age limits for stratification:</b>",
+            kabletable,
+            "</p>"
+          )
+        })
+      }, "Error in drift analysis")
     }
   })
   
-  
-  # Start calculation
+  # Optimized calculation - removed async overhead for better speed
   observeEvent(input$calc, {
+    if (values$calculation_in_progress) return()
+    values$calculation_in_progress <- TRUE
+    
     if (input$boxplot$collapsed) updateBox("boxplot", action = "toggle")
     if (!input$strat_boxplot$collapsed) updateBox("strat_boxplot", action = "toggle")
     if (!input$boxtable$collapsed) updateBox("boxtable", action = "toggle")
     
     dataframe = raw_data()
     
-    sexradioCalc<- isolate(input$sexradioCalc)
+    sexradioCalc <- isolate(input$sexradioCalc)
     if (sexradioCalc == 'M') dataframe <- dataframe[dataframe$sex == 'M', ]
     else if (sexradioCalc == 'F') dataframe <- dataframe[dataframe$sex == 'F', ]
     else if (sexradioCalc == 'D') dataframe <- dataframe[dataframe$sex == 'D', ]
     
-    if ("trimester" %in% colnames(dataframe)) trimesterCalc = isolate(input$trimesterCalc)
-    if (all(dataframe$trimester==0,na.rm=T)) trimesterCalc = 0
-    else dataframe = dataframe[dataframe$trimester == trimesterCalc ]
+    if ("trimester" %in% colnames(dataframe)) {
+      trimesterCalc = isolate(input$trimesterCalc)
+      if (all(dataframe$trimester==0,na.rm=T)) trimesterCalc = 0
+      else dataframe = dataframe[dataframe$trimester == trimesterCalc, ]
+    }
     
-    agell <- isolate(input$agell)
-    ageul <- isolate(input$ageul)
+    agell <- agell_debounced()
+    ageul <- ageul_debounced()
     agelimitsvalid <- (ageul > 0 && (ageul > agell) && !is.na(agell) && !is.na(ageul))  
     if (agelimitsvalid) dataframe <- dataframe[(dataframe$age >= agell) & (dataframe$age <= ageul), ]
+    
     referencelimits.low <- isolate(input$referencelimits.low)
     referencelimits.high <- isolate(input$referencelimits.high)
     referencelimitsvalid <- (referencelimits.high > 0 && (referencelimits.high > referencelimits.low) && !is.na(referencelimits.low) && !is.na(referencelimits.high))  
+    
     estimatedlimits.low <- 0
     estimatedlimits.high <- 0
     citext <- ""
     skewness <- ""
     
-    if (length(na.omit(dataframe$result)) < 500) shinyalert("insufficient data...", paste("The selected dataset contains ", length(na.omit(dataframe$result)), " results.\nPlease increase the sample size (minimum n=500)."), type = "error")
-    else {
-      if (length(na.omit(dataframe$result)) < 2000) shinyalert("small sample size...", paste("The selected dataset contains only ", length(dataframe$result), " results.\nYou have been warned..."), type = "warning")
-      if (length(na.omit(dataframe$result)) > 100000) shinyalert("large sample size...", paste("The selected dataset contains ", length(dataframe$result), " results.\nYou have been warned..."), type = "warning")
-      
-      methodradio <- isolate(input$methodradio)    
+    if (length(na.omit(dataframe$result)) < 500) {
+      shinyalert("insufficient data...", paste("The selected dataset contains ", length(na.omit(dataframe$result)), " results.\nPlease increase the sample size (minimum n=500)."), type = "error")
+      values$calculation_in_progress <- FALSE
+      return()
+    }
+    
+    if (length(na.omit(dataframe$result)) < 2000) {
+      shinyalert("small sample size...", paste("The selected dataset contains only ", length(dataframe$result), " results.\nYou have been warned..."), type = "warning")
+    }
+    
+    if (length(na.omit(dataframe$result)) > 100000) {
+      shinyalert("large sample size...", paste("The selected dataset contains ", length(dataframe$result), " results.\nYou have been warned..."), type = "warning")
+    }
+    
+    methodradio <- isolate(input$methodradio)
+    
+    # Direct calculation without async overhead
+    safely_execute({
       if (methodradio == 'refiner') {
         nbootstrap <- isolate(input$nbootstrap)
         modboxcox <- isolate(input$modboxcox)
@@ -967,22 +1036,24 @@ server <- function(input, output, session) {
         estimatedlimits.high <- getRI(resri)[2, 2]
         
         output$plot <- renderPlot({
+          req(!input$boxplot$collapsed)
           plot(resri)
           if (referencelimitsvalid) plotcomparisonlimits(getRI(resri)[1, 2], getRI(resri)[2, 2], referencelimits.low, referencelimits.high)
-        })
+        }, outputArgs = list(height = 400))
       }
       else if (methodradio == 'tmc') {
         output$plot <- renderPlot({
+          req(!input$boxplot$collapsed)
           temptmc <- tmc(na.omit(dataframe$result))
           estimatedlimits.low <<- temptmc$RL1
           estimatedlimits.high <<- temptmc$RL2
           replayPlot(temptmc$myplot)
           if (referencelimitsvalid)
             plotcomparisonlimits(temptmc$RL1, temptmc$RL2, referencelimits.low, referencelimits.high)
-        })
+        }, outputArgs = list(height = 400))
       }
       else if (methodradio == 'tml') {
-        fasttml=raw_fasttml()
+        fasttml <- raw_fasttml()
         
         if (quantile(dataframe$result, probs = 0.90) >= 1000) decimalcount <- 0
         else if (quantile(dataframe$result, probs = 0.90) >= 100) decimalcount <- 1
@@ -995,32 +1066,38 @@ server <- function(input, output, session) {
         if (estimateright > estimateleft) pathright <- TRUE
         else pathright <- FALSE
         
-        
         output$plot <- renderPlot({
+          req(!input$boxplot$collapsed)
           temptml <- tml(na.omit(dataframe$result), pathright)
           estimatedlimits.low <<- temptml$DL25
           estimatedlimits.high <<- temptml$DL975
           replayPlot(temptml$myplot)
           if (referencelimitsvalid)
             plotcomparisonlimits(temptml$DL25, temptml$DL975, referencelimits.low, referencelimits.high)
-        })
+        }, outputArgs = list(height = 400))
       }
       else if (methodradio == 'kosmic') {
         resri <- kosmic(na.omit(dataframe$result), decimals = 1)
         estimatedlimits.low <- summary(resri)[1]
         estimatedlimits.high <- summary(resri)[3]
         output$plot <- renderPlot({
+          req(!input$boxplot$collapsed)
           plot(resri)
-        })
+        }, outputArgs = list(height = 400))
       }
       else if (methodradio == 'reflimr') {
         estimatedlimits.low <- reflim(dataframe$result)$limits[1]
         estimatedlimits.high <- reflim(dataframe$result)$limits[2]
         if (referencelimitsvalid)
-          output$plot <- renderPlot(reflim(dataframe$result, targets = c(referencelimits.low, referencelimits.high)))
-        else output$plot <- renderPlot(reflim(dataframe$result, targets = NULL))
+          output$plot <- renderPlot({
+            req(!input$boxplot$collapsed)
+            reflim(dataframe$result, targets = c(referencelimits.low, referencelimits.high))
+          }, outputArgs = list(height = 400))
+        else output$plot <- renderPlot({
+          req(!input$boxplot$collapsed)
+          reflim(dataframe$result, targets = NULL)
+        }, outputArgs = list(height = 400))
       }
-      
       
       output$placeholder = renderText({
         if (estimatedlimits.low > 100) decimalcount <- 0
@@ -1056,7 +1133,9 @@ server <- function(input, output, session) {
           "</p>"
         )
       })
-    }
+    }, "Calculation error")
+    
+    values$calculation_in_progress <- FALSE
   })
 }
 
