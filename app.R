@@ -1,12 +1,11 @@
-library(admisc)
+library(htmltools)
 library(bslib)
+library(admisc)
 library(date)
 library(dplyr)
-library(e1071)
 library(fresh)
 library(geoR)
 library(ggplot2)
-library(htmltools)
 library(kableExtra)
 library(knitr)
 library(MASS)
@@ -28,7 +27,9 @@ library(shinyjs)
 library(snpar) # installation: "install.packages('devtools')" and "devtools::install_github('debinqiu/snpar')"
 library(stringr)
 library(tidykosmic) # installation: "install.packages('devtools')" and "devtools::install_github('divinenephron/tidykosmic')"
-
+library(future)
+library(promises)
+library(e1071)
 
 # Colors
 uoltheme <- create_theme(
@@ -563,8 +564,8 @@ server <- function(input, output, session) {
     agell <- strat_agell_debounced()
     ageul <- strat_ageul_debounced()
     agelimitsvalid <- (!is.null(agell) && !is.null(ageul) && 
-                         !is.na(agell) && !is.na(ageul) && 
-                         ageul > agell && ageul > 0)
+                       !is.na(agell) && !is.na(ageul) && 
+                       ageul > agell && ageul > 0)
     
     if (agelimitsvalid) {
       dataframe <- dataframe[(dataframe$age >= agell) & (dataframe$age <= ageul), ]
@@ -726,23 +727,32 @@ server <- function(input, output, session) {
   
   # Add trimester column
   observeEvent(input$pregnancy_button, {
-    dataframe = data.frame(result = rep(NA, tablesize), age = rep(NA, tablesize), sex = factor(rep(NA, tablesize), levels = sexlist), trimester = factor(rep(NA, tablesize), levels = c(0,1, 2, 3)))
-    dataframe_raw=raw_data()
-    dataframe$result <- c(dataframe_raw$result, rep(NA, tablesize)- length(dataframe_raw$result))[1:tablesize]
-    dataframe$age <- c(dataframe_raw$age, rep(NA, tablesize)- length(dataframe_raw$age))[1:tablesize]
-    dataframe$sex <- c(dataframe_raw$sex, rep(NA, tablesize)- length(dataframe_raw$sex))[1:tablesize]
-    dataframe$trimester == 0
+    dataframe_raw <- raw_data()
+    
+    # Create new dataframe with trimester column
+    dataframe <- data.frame(
+      result = c(dataframe_raw$result, rep(NA, tablesize - length(dataframe_raw$result)))[1:tablesize],
+      age = c(dataframe_raw$age, rep(NA, tablesize - length(dataframe_raw$age)))[1:tablesize],
+      sex = c(as.character(dataframe_raw$sex), rep(NA, tablesize - length(dataframe_raw$sex)))[1:tablesize],
+      trimester = rep(0, tablesize),
+      stringsAsFactors = FALSE
+    )
+    
+    # Convert to character for consistency with table rendering
+    dataframe$result <- as.character(dataframe$result)
+    dataframe$age <- as.character(dataframe$age)
+    
     updateNumericInput(session, "referencelimits.low", value = 0)
     updateNumericInput(session, "referencelimits.high", value = 0)
     updateNumericInput(session, "agell", value = "")
     updateNumericInput(session, "ageul", value = "")
     output$pregnancymode <- renderText({ '1' })
-    updateBox("boxtable")
-    updateBox("strat_boxplot")
-    updateBox("boxplot")
-    output$table <- renderRHandsontable(rhandsontable(dataframe, width = '450', height = 550, stretchH = "all", rowHeaderWidth = 65) %>%
-                                          hot_col("result", validator = resultvalidator) %>%
-                                          hot_col("sex", allowInvalid = TRUE)
+    
+    output$table <- renderRHandsontable(
+      rhandsontable(dataframe, width = '450', height = 550, stretchH = "all", rowHeaderWidth = 65) %>%
+        hot_col("result", validator = resultvalidator) %>%
+        hot_col("sex", allowInvalid = TRUE) %>%
+        hot_col("trimester", allowInvalid = TRUE)
     )
   })
   
