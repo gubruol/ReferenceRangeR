@@ -537,7 +537,7 @@ server <- function(input, output, session) {
       selected = "D"
     )
     comparesexlist = c(femalelist, input$Init_female, malelist, input$Init_male, diverselist, input$Init_diverse, "", NA)
-    if (all(input_sex %in% comparesexlist) == FALSE) shinyalert("Check sex column variables...", "Please assign the data manually") 
+    if (all(input_sex %in% comparesexlist) == FALSE) shinyalert("Check sex column variables...", "Please assign the data manually...", type="error") 
     if (all(input_sex %in% comparesexlist) == FALSE) updateBox("initbox", action = "toggle") 
   })
   
