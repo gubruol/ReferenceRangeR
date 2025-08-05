@@ -173,8 +173,10 @@ ui <-
               ),
           br(),
           br(),
+          HTML("<div style='text-align:center;width:100%;font-size:90%'><r>Visualization and Stratification:</r></div>"),
           actionButton("sexbox", HTML("Check sex differences"), style = buttoncolors1, width = '100%'),
           actionButton("drift", HTML("Check age drift"), style = buttoncolors1, width = '100%'),
+          br(),
           br(),
           br(),
           actionButton("calc", HTML("<b>Calculate</b>"), style = buttoncolors1, width = '100%'),
@@ -380,9 +382,10 @@ ui <-
                 )),
               checkboxInput(
                 "compare", 
-                "Compare RI limits", 
+                HTML("<div style='text-align:left;width:100%;font-size:80%'><r>Compare RI limits:</r></div>"), 
                 value = FALSE),
               conditionalPanel(condition = "input.compare==1",
+                               HTML("<div style='text-align:center;width:100%;font-size:80%'><i>lower limit / upper limit </i>"),
                                fluidRow(
                                  column(
                                    6,
@@ -394,7 +397,7 @@ ui <-
                                    div(
                                      id = "ref_high_container",
                                      numericInput("referencelimits.high", NULL, "0.0", step = 0.1)))),
-                               HTML("<div style='text-align:center;width:100%;font-size:80%'><i>lower limit / upper limit </i>")
+                             HTML("<div style='text-align:center;width:100%;font-size:80%'>Permissible uncertainty <a href = 'https://www.degruyter.com/document/doi/10.1515/cclm-2014-0874/html'>(Lit.1 </a> and <a href = 'https://doi.org/10.1515/labmed-2023-0042'>Lit.2)</a></div>")
                                )
               ),
             card(
@@ -429,7 +432,6 @@ server <- function(input, output, session) {
     dataframe$result <- gsub("^<", "", dataframe$result) 
     dataframe$result <- gsub(",", ".", dataframe$result, fixed = TRUE)
     dataframe$result <- as.numeric(dataframe$result)
-    dataframe$age <- gsub(",", ".", dataframe$result, fixed = TRUE)
     dataframe$age <- as.numeric(dataframe$age)
     dataframe <- dataframe[dataframe$result > 0 & !is.na(dataframe$result), ]
     femalelist = c(femalelist, input$Init_female)
@@ -682,9 +684,9 @@ server <- function(input, output, session) {
     updateNumericInput(session, "agell", value = "")
     updateNumericInput(session, "ageul", value = "")
     output$pregnancymode <- renderText({ '1' })
-    updateBox("boxtable", action="update")
-    updateBox("strat_boxplot", action="update")
-    updateBox("boxplot", action="update")
+    updateBox("boxtable", action = "update")
+    updateBox("strat_boxplot", action = "update")
+    updateBox("boxplot", action = "update")
     output$table <- renderRHandsontable(rhandsontable(dataframe, width = '450', height = 550, stretchH = "all", rowHeaderWidth = 65) %>%
                                           hot_col("result", validator = resultvalidator) %>%
                                           hot_col("sex", allowInvalid = TRUE)
@@ -811,25 +813,28 @@ server <- function(input, output, session) {
     updateNumericInput(session, "agell", value = isolate(input$strat_agell))
     updateNumericInput(session, "ageul", value = isolate(input$strat_ageul))
     
-    cases = length(nrow(dataframe$age))
-    
+    #cases <- length(dataframe$age)
+    cases <- sum(!is.na(dataframe$age))
+    print(cases)
     # Alert when n<500 
     if (cases < 500) shinyalert("insufficient data...", paste("The selected dataset contains ", cases, " results with given age.\nPlease increase the sample size (minimum n=500)."), type = "error")
     else {
+      
       # Subsampling and reduction of sample size for n>10000
+      
       dataframe[sample(nrow(dataframe)), ]
       if (cases > 10000) dataframe <- dataframe[sample(1:length(dataframe$result), 10000), ]
 
-        if (agelimitsvalid) dataframe <- dataframe[(dataframe$age >= agell) & (dataframe$age <= ageul), ]
-        
+      if (agelimitsvalid) dataframe <- dataframe[(dataframe$age >= agell) & (dataframe$age <= ageul), ]
+     
         q10 <- quantile(dataframe$result, probs = 0.1)
         q90 <- quantile(dataframe$result, probs = 0.9)
         ylim.min <- q10 - (q90 - q10) / 1.3
         ylim.max <- q90 + (q90 - q10) / 1.3
-      
+ 
         pu_percent <- 2.39*(-0.25 + 100*(-1+exp(((log(reflim(dataframe$result)$limits[2])-log(reflim(dataframe$result)$limits[1]))/3.92)^2))^0.5)^0.5
         pu_absolute <- pu_percent * median(dataframe$result) / 100
-      
+    
       # Calculate number of digits for age with resulting 10^3 steps or groups.
         agedigits <- 3 - floor(log10(max(dataframe$age)))
       
