@@ -682,9 +682,9 @@ server <- function(input, output, session) {
     updateNumericInput(session, "agell", value = "")
     updateNumericInput(session, "ageul", value = "")
     output$pregnancymode <- renderText({ '1' })
-    updateBox("boxtable")
-    updateBox("strat_boxplot")
-    updateBox("boxplot")
+    updateBox("boxtable", action="update")
+    updateBox("strat_boxplot", action="update")
+    updateBox("boxplot", action="update")
     output$table <- renderRHandsontable(rhandsontable(dataframe, width = '450', height = 550, stretchH = "all", rowHeaderWidth = 65) %>%
                                           hot_col("result", validator = resultvalidator) %>%
                                           hot_col("sex", allowInvalid = TRUE)
