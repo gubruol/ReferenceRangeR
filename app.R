@@ -173,8 +173,10 @@ ui <-
               ),
           br(),
           br(),
+          HTML("<div style='text-align:center;width:100%;font-size:90%'><r>Visualization and Stratification:</r></div>"),
           actionButton("sexbox", HTML("Check sex differences"), style = buttoncolors1, width = '100%'),
           actionButton("drift", HTML("Check age drift"), style = buttoncolors1, width = '100%'),
+          br(),
           br(),
           br(),
           actionButton("calc", HTML("<b>Calculate</b>"), style = buttoncolors1, width = '100%'),
@@ -217,7 +219,7 @@ ui <-
                 width = 30,
                 collapsible = TRUE,
                 collapsed = TRUE,
-                HTML("<div style='text-align:left;width:100%;font-size:100%'><i>Assign sex variables:</i></div>"),
+                HTML("<div style='text-align:left;width:100%;font-size:100%'><r>Assign sex variables:</r></div>"),
                 selectInput(
                   "Init_female",
                   "female:",
@@ -267,7 +269,6 @@ ui <-
                   bg = "#003B73",
                   position = "left", 
                   open = "desktop",
-                  HTML("<div style='text-align:center;width:100%;font-size:100%'><r>Visualization settings:</r></div>"),
                   tags$div(class = "radioButtons",
                   radioButtons("sexradio", "", c("all" = "A", "male" = "M", "female" = "F", "non-binary" = "D"))),
                   HTML("<div style='text-align:center;width:100%;font-size:80%'><i>Age limits from / to</i></div>"),
@@ -380,9 +381,10 @@ ui <-
                 )),
               checkboxInput(
                 "compare", 
-                "Compare RI limits", 
+                HTML("<div style='text-align:left;width:100%;font-size:80%'><r>Compare RI limits:</r></div>"), 
                 value = FALSE),
               conditionalPanel(condition = "input.compare==1",
+                               HTML("<div style='text-align:center;width:100%;font-size:80%'><i>lower limit / upper limit </i>"),
                                fluidRow(
                                  column(
                                    6,
@@ -394,7 +396,7 @@ ui <-
                                    div(
                                      id = "ref_high_container",
                                      numericInput("referencelimits.high", NULL, "0.0", step = 0.1)))),
-                               HTML("<div style='text-align:center;width:100%;font-size:80%'><i>lower limit / upper limit </i>")
+                             HTML("<div style='text-align:center;width:100%;font-size:80%'>Permissible uncertainty <a href = 'https://www.degruyter.com/document/doi/10.1515/cclm-2014-0874/html'>(Lit.1 </a> and <a href = 'https://doi.org/10.1515/labmed-2023-0042'>Lit.2)</a></div>")
                                )
               ),
             card(
@@ -435,8 +437,7 @@ server <- function(input, output, session) {
     malelist = c(malelist,input$Init_male)
     diverselist = c(diverselist,input$Init_diverse)
     dataframe <- dataframe %>% mutate(sex = ifelse(sex %in% femalelist, 'F', ifelse(sex %in% malelist, 'M', ifelse(sex %in% diverselist, 'D', 'X'))))
-    dataframe <- dataframe[!is.na(dataframe$sex), ]
-    if ("trimester" %in% colnames(dataframe)) dataframe$trimester = plyr::mapvalues(dataframe$trimester,c(""),0)
+    if ("trimester" %in% colnames(dataframe)) dataframe$trimester = plyr::mapvalues(dataframe$trimester,c(""),0,warn_missing = FALSE)
     if (input$remove_pregnancy) dataframe = dataframe[,-4]
     return(dataframe)
   })
@@ -514,25 +515,26 @@ server <- function(input, output, session) {
   observeEvent(input$table, {
     dataframe = hot_to_r(input$table)
     input_sex= unique(dataframe$sex)
+    input_sex_diff= setdiff(input_sex, sexlist)
     updateSelectInput(
       session = getDefaultReactiveDomain(),
       inputId = "Init_female",
       label = "female:",
-      choices= input_sex,
+      choices= c("F",input_sex_diff),
       selected = "F"
     )
     updateSelectInput(
       session = getDefaultReactiveDomain(),
       inputId = "Init_male",
       label = "male:",
-      choices= input_sex,
+      choices= c("M",input_sex_diff),
       selected = "M"
     )
     updateSelectInput(
       session = getDefaultReactiveDomain(),
       inputId = "Init_diverse",
       label = "diverse:",
-      choices= input_sex,
+      choices= c("D",input_sex_diff),
       selected = "D"
     )
     comparesexlist = c(femalelist, input$Init_female, malelist, input$Init_male, diverselist, input$Init_diverse, "", NA)
@@ -710,8 +712,9 @@ server <- function(input, output, session) {
     dataframe=raw_data()
     
     updateRadioButtons(session,"trimesterCalc", selected= isolate(input$sexradio))
+    Anzahl=sum(!is.na(dataframe$age))
     
-    if (length(nrow(dataframe$age))==0) {
+    if (sum(!is.na(dataframe$result))==0) {
       agell <- 0
       ageul <- 0
     }
@@ -720,9 +723,11 @@ server <- function(input, output, session) {
       ageul <- isolate(input$strat_ageul)
     }
     agelimitsvalid <- (ageul > 0 && (ageul > agell) && !is.na(agell) && !is.na(ageul)) 
-    
+  
     updateNumericInput(session, "agell", value = isolate(input$strat_agell))
-    updateNumericInput(session, "ageul", value = isolate(input$strat_ageul))
+    updateNumericInput(session, "ageul", value = isolate(input$strat_ageul)) 
+    
+    if (agelimitsvalid) dataframe <- dataframe[(dataframe$age >= agell) & (dataframe$age <= ageul), ]
     
     sexradio<- isolate(input$sexradio)
     if (sexradio == 'M') dataframe <- dataframe[dataframe$sex == 'M', ]
@@ -731,9 +736,9 @@ server <- function(input, output, session) {
     
     updateRadioButtons(session,"sexradioCalc", selected= isolate(input$sexradio))
   
-    cases = length(dataframe$result)
+    cases = sum(!is.na(dataframe$result))
     dataframe <- dataframe %>% group_by(sex) %>% filter(n() >= 100)
-    casesfiltered = length(dataframe$result)
+    casesfiltered = sum(!is.na(dataframe$result))
     if (casesfiltered < cases) dataremoved = TRUE else dataremoved = FALSE
     if (casesfiltered < 500) shinyalert("insufficient data...", paste("The selected dataset contains ", casesfiltered, " results.\nPlease increase the sample size (minimum n=500)."), type = "error")
     else {
@@ -806,7 +811,8 @@ server <- function(input, output, session) {
     agell <- isolate(input$strat_agell)
     ageul <- isolate(input$strat_ageul)
     agelimitsvalid <- (ageul > 0 && (ageul > agell) && !is.na(agell) && !is.na(ageul))  
-      
+    
+    if (agelimitsvalid) dataframe <- dataframe[(dataframe$age >= agell) & (dataframe$age <= ageul), ]  
     updateNumericInput(session, "agell", value = isolate(input$strat_agell))
     updateNumericInput(session, "ageul", value = isolate(input$strat_ageul))
     
@@ -944,7 +950,7 @@ server <- function(input, output, session) {
     if (all(dataframe$trimester==0,na.rm=T)) trimesterCalc = 0
     else dataframe = dataframe[dataframe$trimester == trimesterCalc ]
   
-    if (length(nrow(dataframe$age))==0) {
+    if (sum(!is.na(dataframe$result))==0) {
       agell <- 0
       ageul <- 0
     }
@@ -954,6 +960,7 @@ server <- function(input, output, session) {
     }
     agelimitsvalid <- (ageul > 0 && (ageul > agell) && !is.na(agell) && !is.na(ageul))  
     if (agelimitsvalid) dataframe <- dataframe[(dataframe$age >= agell) & (dataframe$age <= ageul), ]
+    
     referencelimits.low <- isolate(input$referencelimits.low)
     referencelimits.high <- isolate(input$referencelimits.high)
     referencelimitsvalid <- (referencelimits.high > 0 && (referencelimits.high > referencelimits.low) && !is.na(referencelimits.low) && !is.na(referencelimits.high))  
