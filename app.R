@@ -173,10 +173,8 @@ ui <-
               ),
           br(),
           br(),
-          HTML("<div style='text-align:center;width:100%;font-size:90%'><r>Visualization and Stratification:</r></div>"),
           actionButton("sexbox", HTML("Check sex differences"), style = buttoncolors1, width = '100%'),
           actionButton("drift", HTML("Check age drift"), style = buttoncolors1, width = '100%'),
-          br(),
           br(),
           br(),
           actionButton("calc", HTML("<b>Calculate</b>"), style = buttoncolors1, width = '100%'),
@@ -381,10 +379,9 @@ ui <-
                 )),
               checkboxInput(
                 "compare", 
-                HTML("<div style='text-align:left;width:100%;font-size:80%'><r>Compare RI limits:</r></div>"), 
+                "Compare RI limits", 
                 value = FALSE),
               conditionalPanel(condition = "input.compare==1",
-                               HTML("<div style='text-align:center;width:100%;font-size:80%'><i>lower limit / upper limit </i>"),
                                fluidRow(
                                  column(
                                    6,
@@ -396,7 +393,7 @@ ui <-
                                    div(
                                      id = "ref_high_container",
                                      numericInput("referencelimits.high", NULL, "0.0", step = 0.1)))),
-                             HTML("<div style='text-align:center;width:100%;font-size:80%'>Permissible uncertainty <a href = 'https://www.degruyter.com/document/doi/10.1515/cclm-2014-0874/html'>(Lit.1 </a> and <a href = 'https://doi.org/10.1515/labmed-2023-0042'>Lit.2)</a></div>")
+                               HTML("<div style='text-align:center;width:100%;font-size:80%'><i>lower limit / upper limit </i>")
                                )
               ),
             card(
