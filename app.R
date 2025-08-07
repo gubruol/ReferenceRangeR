@@ -687,8 +687,11 @@ server <- function(input, output, session) {
   })
   
   observeEvent(input$remove_pregnancy, {
-    dataframe= raw_data()
-    dataframe = dataframe[,-4]
+    dataframe = raw_data()
+    if (nrow(dataframe)==0) dataframe = dataframe1
+    else { 
+      dataframe = dataframe[,-4]
+    }
     output$table <- renderRHandsontable(rhandsontable(dataframe, width = '400', height = 550, stretchH = "all", rowHeaderWidth = 65) %>%
                                           hot_col("result", validator = resultvalidator) %>%
                                           hot_col("sex", allowInvalid = TRUE)
@@ -952,8 +955,8 @@ server <- function(input, output, session) {
       ageul <- 0
     }
     else {
-      agell <- isolate(input$strat_agell)
-      ageul <- isolate(input$strat_ageul)
+      agell <- isolate(input$agell)
+      ageul <- isolate(input$ageul)
     }
     agelimitsvalid <- (ageul > 0 && (ageul > agell) && !is.na(agell) && !is.na(ageul))  
     if (agelimitsvalid) dataframe <- dataframe[(dataframe$age >= agell) & (dataframe$age <= ageul), ]
