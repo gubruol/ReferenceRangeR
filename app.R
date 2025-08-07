@@ -9,12 +9,12 @@ library(ggplot2)
 library(kableExtra)
 library(knitr)
 library(MASS)
-library(mgcv)
+# library(mgcv)
 library(modeest)
 library(msm)
 library(nlme)
-library(qgam)
-library(refineR)
+# library(qgam)
+# library(refineR)
 library(reflimR)
 library(rhandsontable)
 library(scales)
@@ -26,7 +26,7 @@ library(shinydashboardPlus)
 library(shinyjs)
 library(snpar) # installation: "install.packages('devtools')" and "devtools::install_github('debinqiu/snpar')"
 library(stringr)
-library(tidykosmic) # installation: "install.packages('devtools')" and "devtools::install_github('divinenephron/tidykosmic')"
+# library(tidykosmic) # installation: "install.packages('devtools')" and "devtools::install_github('divinenephron/tidykosmic')"
 
 # Colors
 uoltheme <- create_theme(
@@ -54,15 +54,12 @@ fasttml=NULL
 
 # Path for TMC and TML library
 if (Sys.info()["sysname"] == "Windows") {
-  source("Z:/R/kc.uol.de/referenceranger/TMC.R")
-  source("Z:/R/kc.uol.de/referenceranger/TML.R")
+  base_path <- "Z:/R/kc.uol.de/referenceranger/"
 } else if (Sys.info()["sysname"] == "Linux") {
-  source("/srv/shiny-server/referenceranger/TMC.R")
-  source("/srv/shiny-server/referenceranger/TML.R")
+  base_path <- "/srv/shiny-server/referenceranger/"
 } else {
-  source("./referenceranger/TMC.R")
-  source("./referenceranger/TML.R")
-}  
+  base_path <- "./referenceranger/"
+}
 
 resultvalidator <- "function(value, callback) {
   setTimeout(function() {
@@ -153,7 +150,7 @@ ui <-
           box-shadow: none !important;
         }
                         "))
-        ),
+      ),
       use_theme(uoltheme),
       tags$div(
         class = "sidebar-scroll",
@@ -161,16 +158,16 @@ ui <-
           br(),
           div(img(
             src = 'rrr.webp', width = '150px'), style = 'text-align: center;'),
-            menuItem(tags$div(
-              style = "text-align:center; font-size: 0.8em; font-style: italic;",
-              tags$a(
-                href = "https://kc.uol.de/referenceranger/help.pdf", "help", target = "_blank"),
-                "  |  ",
-                tags$a(href = "https://github.com/gubruol/ReferenceRangeR/", "github", target = "_blank"),
-                "  |  ",
-                tags$a(href = "https://kc.uol.de/disclaimer/", "disclaimer", target = "_blank")
-                 )
-              ),
+          menuItem(tags$div(
+            style = "text-align:center; font-size: 0.8em; font-style: italic;",
+            tags$a(
+              href = "https://kc.uol.de/referenceranger/help.pdf", "help", target = "_blank"),
+            "  |  ",
+            tags$a(href = "https://github.com/gubruol/ReferenceRangeR/", "github", target = "_blank"),
+            "  |  ",
+            tags$a(href = "https://kc.uol.de/disclaimer/", "disclaimer", target = "_blank")
+          )
+          ),
           br(),
           br(),
           actionButton("sexbox", HTML("Check sex differences"), style = buttoncolors1, width = '100%'),
@@ -182,120 +179,120 @@ ui <-
           div(style = "display: flex; justify-content: space-between;",
               actionButton("clear", "Clear data", style = buttoncolors2, width = '100%'),
               actionButton("demo", "Demo data", style = buttoncolors2, style = 'margin-right: 10px;', width = '100%')
-            )
           )
-        ),
-        conditionalPanel(
-              condition = "output.advanced == 0",
-              tags$div(class="header-button",
-                       actionButton(inputId="advanced_button",HTML("Advanced mode"), style = buttoncolors3, width = '100%')
-                  )),
-            conditionalPanel(
-              condition = "output.advanced == 1",
-              tags$div(class="header-button",
-              actionButton(inputId="standard_button",HTML("Standard mode"), style = buttoncolors3, width = '100%')
-              )
-              ),  
-        tags$div(class = "sidebar-image",
+        )
+      ),
+      conditionalPanel(
+        condition = "output.advanced == 0",
+        tags$div(class="header-button",
+                 actionButton(inputId="advanced_button",HTML("Advanced mode"), style = buttoncolors3, width = '100%')
+        )),
+      conditionalPanel(
+        condition = "output.advanced == 1",
+        tags$div(class="header-button",
+                 actionButton(inputId="standard_button",HTML("Standard mode"), style = buttoncolors3, width = '100%')
+        )
+      ),  
+      tags$div(class = "sidebar-image",
                tags$img(src = "umo.svg"))
     ),
     
     dashboardBody(
       useShinyjs(),
       add_busy_spinner(spin = "folding-cube", color = "#003B73", position = "full-page", height = "150px", width = "150px", onstart = FALSE, timeout = 2000),
-          as.card_item(
-            box(
-              title=actionLink("Data Input",inputId="DI"), 
-              id = "boxtable",
-              width = 8, 
-              solidHeader = TRUE, 
-              collapsible = TRUE, 
-              status = "primary",
-              sidebar= boxSidebar(
-                title= "Settings",
-                id= "initbox",
-                width = 30,
-                collapsible = TRUE,
-                collapsed = TRUE,
-                HTML("<div style='text-align:left;width:100%;font-size:100%'><r>Assign sex variables:</r></div>"),
-                selectInput(
-                  "Init_female",
-                  "female:",
-                  choices="F"),
-                selectInput(
-                  "Init_male",
-                  "male:",
-                  choices="M"),
-                selectInput(
-                  "Init_diverse",
-                  "diverse:",
-                  choices="D"),
-                dropdownDivider(),
-                conditionalPanel(
-                  condition = "output.advanced==1",
-                  conditionalPanel(
-                    condition = "output.pregnancymode != 1", 
-                    actionButton("pregnancy_button", HTML("add trimester column"), 
-                                 style = buttoncolors4)
-                ),
-                conditionalPanel(
-                  condition = "output.pregnancymode == 1", 
-                  actionButton("remove_pregnancy", HTML("remove trimester column"), 
-                               style = buttoncolors4)
-                ))),
-              card(
-                max_height = "700px",
-                rHandsontableOutput("table")
-              )
-            )
-          ), 
-        as.card_item(
-          box(
-            title= actionLink("Visualization and Stratification", inputId="SV"),
-            id = "strat_boxplot", 
-            width = 12, 
-            solidHeader = TRUE, 
-            collapsible = TRUE, 
-            collapsed = TRUE, 
-            status = "primary",
-              card(
-                max_height= 700,
-                tags$div(class = "layout-sidebar1"
-                         ,layout_sidebar( 
-                sidebar=sidebar(
-                  id = "sidebar_strat",
-                  bg = "#003B73",
-                  position = "left", 
-                  open = "desktop",
-                  tags$div(class = "radioButtons",
-                  radioButtons("sexradio", "", c("all" = "A", "male" = "M", "female" = "F", "non-binary" = "D"))),
-                  HTML("<div style='text-align:center;width:100%;font-size:80%'><i>Age limits from / to</i></div>"),
-                  fluidRow(
-                    column(
-                      6, 
-                      div(
-                      id = "strat_agell_container",
-                      numericInput("strat_agell", NULL, "0"))), 
-                    column(
-                      6,
-                      div(
-                        id = "strat_ageul_container",
-                      numericInput("strat_ageul", NULL, "0")))),
-                  conditionalPanel(
-                    condition = "output.advanced == 1", 
-                    sliderInput("stratnum", "max. no. of age groups", min = 2, max = 12, value = 3, step = 1,ticks = FALSE)
-                    )
-                  ),
-                    card(
-                      max_height= "320",
-                      plotOutput("strat_plot"
-                              )),
-                card(
-                  max_height= "330",
-                    htmlOutput("strat_placeholder"
-                               )))
-                  ))
-          )),
+      as.card_item(
+        box(
+          title=actionLink("Data Input",inputId="DI"), 
+          id = "boxtable",
+          width = 8, 
+          solidHeader = TRUE, 
+          collapsible = TRUE, 
+          status = "primary",
+          sidebar= boxSidebar(
+            title= "Settings",
+            id= "initbox",
+            width = 30,
+            collapsible = TRUE,
+            collapsed = TRUE,
+            HTML("<div style='text-align:left;width:100%;font-size:100%'><r>Assign sex variables:</r></div>"),
+            selectInput(
+              "Init_female",
+              "female:",
+              choices="F"),
+            selectInput(
+              "Init_male",
+              "male:",
+              choices="M"),
+            selectInput(
+              "Init_diverse",
+              "diverse:",
+              choices="D"),
+            dropdownDivider(),
+            conditionalPanel(
+              condition = "output.advanced==1",
+              conditionalPanel(
+                condition = "output.pregnancymode != 1", 
+                actionButton("pregnancy_button", HTML("add trimester column"), 
+                             style = buttoncolors4)
+              ),
+              conditionalPanel(
+                condition = "output.pregnancymode == 1", 
+                actionButton("remove_pregnancy", HTML("remove trimester column"), 
+                             style = buttoncolors4)
+              ))),
+          card(
+            max_height = "700px",
+            rHandsontableOutput("table")
+          )
+        )
+      ), 
+      as.card_item(
+        box(
+          title= actionLink("Visualization and Stratification", inputId="SV"),
+          id = "strat_boxplot", 
+          width = 12, 
+          solidHeader = TRUE, 
+          collapsible = TRUE, 
+          collapsed = TRUE, 
+          status = "primary",
+          card(
+            max_height= 700,
+            tags$div(class = "layout-sidebar1"
+                     ,layout_sidebar( 
+                       sidebar=sidebar(
+                         id = "sidebar_strat",
+                         bg = "#003B73",
+                         position = "left", 
+                         open = "desktop",
+                         tags$div(class = "radioButtons",
+                                  radioButtons("sexradio", "", c("all" = "A", "male" = "M", "female" = "F", "non-binary" = "D"))),
+                         HTML("<div style='text-align:center;width:100%;font-size:80%'><i>Age limits from / to</i></div>"),
+                         fluidRow(
+                           column(
+                             6, 
+                             div(
+                               id = "strat_agell_container",
+                               numericInput("strat_agell", NULL, "0"))), 
+                           column(
+                             6,
+                             div(
+                               id = "strat_ageul_container",
+                               numericInput("strat_ageul", NULL, "0")))),
+                         conditionalPanel(
+                           condition = "output.advanced == 1", 
+                           sliderInput("stratnum", "max. no. of age groups", min = 2, max = 12, value = 3, step = 1,ticks = FALSE)
+                         )
+                       ),
+                       card(
+                         max_height= "320",
+                         plotOutput("strat_plot"
+                         )),
+                       card(
+                         max_height= "330",
+                         htmlOutput("strat_placeholder"
+                         )))
+            ))
+        )),
       as.card_item(
         box(
           title = actionLink("Reference Interval", inputId="RI"), 
@@ -309,105 +306,105 @@ ui <-
             max_height = "700px",
             tags$div(class = "layout-sidebar2"
                      ,layout_sidebar( 
-            sidebar=sidebar( 
-              id = "sidebar_ref",
-              bg = "#003B73",
-              fillable = T,
-              position = "left", 
-              open = "desktop",
-              HTML("<div style='text-align:left;width:100%;line-height: 10px;font-size:90%'><r>Calculation settings:</r></div>"),
-              tags$div(class = "radioButtons",
-                       radioButtons("sexradioCalc", "",
-                           choiceNames = list(
-                             HTML("<r>all</r> "),
-                             HTML("<r>male</r> "),
-                             HTML("<r>female</r> "),
-                             HTML("<r>non-binary</r> ")
-                           ),
-                           choiceValues = list("A","M","F","D")
-                           )
-                       ),
-              conditionalPanel(
-                condition = "output.pregnancymode == 1", 
-                tags$div(class = "radioButtons",
-                         radioButtons("trimesterCalc", "", 
-                                      c("1. trimester" = 1, "2. trimester" = 2, "3. trimester" = 3)))
-                ),
-              HTML("<div style='text-align:center;width:100%;font-size:80%'><r>Select age: <i>from / to</i></div>"),
-              fluidRow(
-                column(
-                  6,
-                  div(
-                    id = "agell_container",
-                    numericInput("agell", NULL, "0"))), 
-                column(
-                  6,
-                  div(
-                    id = "ageul_container",
-                    numericInput("ageul", NULL, "0")))),
-              HTML("<div style='text-align:left;width:100%;line-height: 10px;font-size:90%'><r>Select method:</r></div>"),
-              tags$div(class = "radioButtons",
-                       radioButtons("methodradio", "", choiceNames = list(
-                         HTML("<b>refineR</b> <a href = 'https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8346497/pdf/41598_2021_Article_95301.pdf'>(Lit.)</a>"),
-                         HTML("<b>TMC</b> <a href = 'https://www.degruyter.com/document/doi/10.1515/cclm-2018-1341/html'>(Lit.)</a>"),
-                         HTML("<b>TML</b> <a href = 'https://www.degruyter.com/document/doi/10.1515/CCLM.2007.249/html'>(Lit.)</a>"),
-                         HTML("<b>kosmic</b> <a href = 'https://www.nature.com/articles/s41598-020-58749-2'>(Lit.)</a>"),
-                         HTML("<b>reflimR</b> <a href = 'https://doi.org/10.1515/labmed-2023-0042'>(Lit.)</a>")
+                       sidebar=sidebar( 
+                         id = "sidebar_ref",
+                         bg = "#003B73",
+                         fillable = T,
+                         position = "left", 
+                         open = "desktop",
+                         HTML("<div style='text-align:left;width:100%;line-height: 10px;font-size:90%'><r>Calculation settings:</r></div>"),
+                         tags$div(class = "radioButtons",
+                                  radioButtons("sexradioCalc", "",
+                                               choiceNames = list(
+                                                 HTML("<r>all</r> "),
+                                                 HTML("<r>male</r> "),
+                                                 HTML("<r>female</r> "),
+                                                 HTML("<r>non-binary</r> ")
+                                               ),
+                                               choiceValues = list("A","M","F","D")
+                                  )
                          ),
-                         choiceValues = list("refiner", "tmc", "tml", "kosmic", "reflimr")
+                         conditionalPanel(
+                           condition = "output.pregnancymode == 1", 
+                           tags$div(class = "radioButtons",
+                                    radioButtons("trimesterCalc", "", 
+                                                 c("1. trimester" = 1, "2. trimester" = 2, "3. trimester" = 3)))
+                         ),
+                         HTML("<div style='text-align:center;width:100%;font-size:80%'><r>Select age: <i>from / to</i></div>"),
+                         fluidRow(
+                           column(
+                             6,
+                             div(
+                               id = "agell_container",
+                               numericInput("agell", NULL, "0"))), 
+                           column(
+                             6,
+                             div(
+                               id = "ageul_container",
+                               numericInput("ageul", NULL, "0")))),
+                         HTML("<div style='text-align:left;width:100%;line-height: 10px;font-size:90%'><r>Select method:</r></div>"),
+                         tags$div(class = "radioButtons",
+                                  radioButtons("methodradio", "", choiceNames = list(
+                                    HTML("<b>refineR</b> <a href = 'https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8346497/pdf/41598_2021_Article_95301.pdf'>(Lit.)</a>"),
+                                    HTML("<b>TMC</b> <a href = 'https://www.degruyter.com/document/doi/10.1515/cclm-2018-1341/html'>(Lit.)</a>"),
+                                    HTML("<b>TML</b> <a href = 'https://www.degruyter.com/document/doi/10.1515/CCLM.2007.249/html'>(Lit.)</a>"),
+                                    HTML("<b>kosmic</b> <a href = 'https://www.nature.com/articles/s41598-020-58749-2'>(Lit.)</a>"),
+                                    HTML("<b>reflimR</b> <a href = 'https://doi.org/10.1515/labmed-2023-0042'>(Lit.)</a>")
+                                  ),
+                                  choiceValues = list("refiner", "tmc", "tml", "kosmic", "reflimr")
+                                  )
+                         ),
+                         conditionalPanel(
+                           condition = "input.methodradio == 'tml'", 
+                           conditionalPanel(
+                             condition = "output.advanced == 1",
+                             checkboxInput("fasttml", 
+                                           HTML("Fast mode <i style = 'font-size:80%;'>(3 significant figures)</i>"),
+                                           value = TRUE
+                             )
+                           )
+                         ),
+                         conditionalPanel(
+                           condition = "output.advanced == 1",
+                           conditionalPanel(
+                             condition = "input.methodradio == 'refiner'",
+                             checkboxInput("modboxcox", 
+                                           HTML("<i style = 'font-size:80%;line-height: 10px;'>use modified Box-Cox</i>"), 
+                                           value = FALSE),
+                             sliderInput("nbootstrap", NULL, min=0, max=50, value=0, step=5, ticks=FALSE),
+                             HTML("<div style = 'text-align:center;line-height: 10px;font-size:90%'><i>bootstrap iterations</i></div>")
+                           )),
+                         checkboxInput(
+                           "compare", 
+                           "Compare RI limits", 
+                           value = FALSE),
+                         conditionalPanel(condition = "input.compare==1",
+                                          fluidRow(
+                                            column(
+                                              6,
+                                              div(
+                                                id = "ref_low_container",
+                                                numericInput("referencelimits.low", NULL, "0.0", step = 0.1))),
+                                            column(
+                                              6,
+                                              div(
+                                                id = "ref_high_container",
+                                                numericInput("referencelimits.high", NULL, "0.0", step = 0.1)))),
+                                          HTML("<div style='text-align:center;width:100%;font-size:80%'><i>lower limit / upper limit </i>")
                          )
                        ),
-              conditionalPanel(
-                condition = "input.methodradio == 'tml'", 
-                conditionalPanel(
-                  condition = "output.advanced == 1",
-                  checkboxInput("fasttml", 
-                              HTML("Fast mode <i style = 'font-size:80%;'>(3 significant figures)</i>"),
-                              value = TRUE
-                              )
-                )
-                ),
-              conditionalPanel(
-                condition = "output.advanced == 1",
-                conditionalPanel(
-                  condition = "input.methodradio == 'refiner'",
-                  checkboxInput("modboxcox", 
-                                HTML("<i style = 'font-size:80%;line-height: 10px;'>use modified Box-Cox</i>"), 
-                                value = FALSE),
-                  sliderInput("nbootstrap", NULL, min=0, max=50, value=0, step=5, ticks=FALSE),
-                HTML("<div style = 'text-align:center;line-height: 10px;font-size:90%'><i>bootstrap iterations</i></div>")
-                )),
-              checkboxInput(
-                "compare", 
-                "Compare RI limits", 
-                value = FALSE),
-              conditionalPanel(condition = "input.compare==1",
-                               fluidRow(
-                                 column(
-                                   6,
-                                   div(
-                                     id = "ref_low_container",
-                                   numericInput("referencelimits.low", NULL, "0.0", step = 0.1))),
-                                 column(
-                                   6,
-                                   div(
-                                     id = "ref_high_container",
-                                     numericInput("referencelimits.high", NULL, "0.0", step = 0.1)))),
-                               HTML("<div style='text-align:center;width:100%;font-size:80%'><i>lower limit / upper limit </i>")
-                               )
-              ),
-            card(
-              max_height = 400,
-              plotOutput("plot")), 
-            card(
-              max_height = 300,
-              htmlOutput("placeholder")))
+                       card(
+                         max_height = 400,
+                         plotOutput("plot")), 
+                       card(
+                         max_height = 300,
+                         htmlOutput("placeholder")))
             ))
-          )
         )
       )
     )
-  
+  )
+
 
 
 # Server initialization
@@ -463,7 +460,7 @@ server <- function(input, output, session) {
     '0'
   })
   outputOptions(output, "pregnancymode", suspendWhenHidden=FALSE)
-
+  
   output$fasttml = renderPrint({
     raw_fasttml()
   })
@@ -474,7 +471,7 @@ server <- function(input, output, session) {
     updateBox("initbox", action = "toggle")
     output$advanced = renderText({
       '1'
-      })
+    })
   })
   
   observeEvent(input$standard_button, {
@@ -558,7 +555,7 @@ server <- function(input, output, session) {
                                           hot_col("result", validator = resultvalidator) %>%
                                           hot_col("sex", allowInvalid = TRUE)
     )
-
+    
     output$strat_plot <- renderPlot({
       ""
     })
@@ -575,65 +572,65 @@ server <- function(input, output, session) {
   })
   
   # Observations of numericInputs: Input lower value > Input higher value => red marking added
-    observe({
-      strat_agell <- input$strat_agell
-      strat_ageul <- input$strat_ageul
+  observe({
+    strat_agell <- input$strat_agell
+    strat_ageul <- input$strat_ageul
+    
+    if (!is.null(strat_agell) && !is.na(strat_agell) &&
+        !is.null(strat_ageul) && !is.na(strat_ageul)) {
       
-      if (!is.null(strat_agell) && !is.na(strat_agell) &&
-          !is.null(strat_ageul) && !is.na(strat_ageul)) {
-        
-        if (strat_agell > strat_ageul) {
-          shinyjs::addClass("strat_agell_container", "red-border")
-          shinyjs::addClass("strat_ageul_container", "red-border")
-        } else {
-          shinyjs::removeClass("strat_agell_container", "red-border")
-          shinyjs::removeClass("strat_ageul_container", "red-border")
-        }
+      if (strat_agell > strat_ageul) {
+        shinyjs::addClass("strat_agell_container", "red-border")
+        shinyjs::addClass("strat_ageul_container", "red-border")
       } else {
         shinyjs::removeClass("strat_agell_container", "red-border")
         shinyjs::removeClass("strat_ageul_container", "red-border")
       }
-    })
+    } else {
+      shinyjs::removeClass("strat_agell_container", "red-border")
+      shinyjs::removeClass("strat_ageul_container", "red-border")
+    }
+  })
+  
+  observe({
+    agell <- input$agell
+    ageul <- input$ageul
     
-    observe({
-      agell <- input$agell
-      ageul <- input$ageul
+    if (!is.null(agell) && !is.na(agell) &&
+        !is.null(ageul) && !is.na(ageul)) {
       
-      if (!is.null(agell) && !is.na(agell) &&
-          !is.null(ageul) && !is.na(ageul)) {
-        
-        if (agell > ageul) {
-          shinyjs::addClass("agell_container", "red-border")
-          shinyjs::addClass("ageul_container", "red-border")
-        } else {
-          shinyjs::removeClass("agell_container", "red-border")
-          shinyjs::removeClass("ageul_container", "red-border")
-        }
+      if (agell > ageul) {
+        shinyjs::addClass("agell_container", "red-border")
+        shinyjs::addClass("ageul_container", "red-border")
       } else {
         shinyjs::removeClass("agell_container", "red-border")
         shinyjs::removeClass("ageul_container", "red-border")
       }
-    })
+    } else {
+      shinyjs::removeClass("agell_container", "red-border")
+      shinyjs::removeClass("ageul_container", "red-border")
+    }
+  })
+  
+  observe({
+    ref_low <- input$referencelimits.low
+    ref_high <- input$referencelimits.high
     
-    observe({
-      ref_low <- input$referencelimits.low
-      ref_high <- input$referencelimits.high
+    if (!is.null(ref_low) && !is.na(ref_low) &&
+        !is.null(ref_high) && !is.na(ref_high)) {
       
-      if (!is.null(ref_low) && !is.na(ref_low) &&
-          !is.null(ref_high) && !is.na(ref_high)) {
-        
-        if (ref_low > ref_high) {
-          shinyjs::addClass("ref_low_container", "red-border")
-          shinyjs::addClass("ref_high_container", "red-border")
-        } else {
-          shinyjs::removeClass("ref_low_container", "red-border")
-          shinyjs::removeClass("ref_high_container", "red-border")
-        }
+      if (ref_low > ref_high) {
+        shinyjs::addClass("ref_low_container", "red-border")
+        shinyjs::addClass("ref_high_container", "red-border")
       } else {
         shinyjs::removeClass("ref_low_container", "red-border")
         shinyjs::removeClass("ref_high_container", "red-border")
       }
-    })
+    } else {
+      shinyjs::removeClass("ref_low_container", "red-border")
+      shinyjs::removeClass("ref_high_container", "red-border")
+    }
+  })
   
   # Generate demo data
   observeEvent(input$demo, {
@@ -698,7 +695,7 @@ server <- function(input, output, session) {
     )
     output$pregnancymode <- renderText({ '0' })
   })
-    
+  
   # Visualize data for sex differences
   observeEvent(input$sexbox, {
     
@@ -720,7 +717,7 @@ server <- function(input, output, session) {
       ageul <- isolate(input$strat_ageul)
     }
     agelimitsvalid <- (ageul > 0 && (ageul > agell) && !is.na(agell) && !is.na(ageul)) 
-  
+    
     updateNumericInput(session, "agell", value = isolate(input$strat_agell))
     updateNumericInput(session, "ageul", value = isolate(input$strat_ageul)) 
     
@@ -732,7 +729,7 @@ server <- function(input, output, session) {
     else if (sexradio == 'D') dataframe <- dataframe[dataframe$sex == 'D', ]
     
     updateRadioButtons(session,"sexradioCalc", selected= isolate(input$sexradio))
-  
+    
     cases = sum(!is.na(dataframe$result))
     dataframe <- dataframe %>% group_by(sex) %>% filter(n() >= 100)
     casesfiltered = sum(!is.na(dataframe$result))
@@ -788,14 +785,17 @@ server <- function(input, output, session) {
     }
   })
   
-
+  
   # Visualize drift
   observeEvent(input$drift, {
+    
+    if(!"mgcv" %in% .packages()) library(mgcv)
+    if(!"qgam" %in% .packages()) library(qgam)
     
     if (input$strat_boxplot$collapsed) updateBox("strat_boxplot", action = "toggle")
     if (!input$boxplot$collapsed) updateBox("boxplot", action = "toggle")
     if (!input$boxtable$collapsed) updateBox("boxtable", action = "toggle")
-
+    
     dataframe=raw_data()
     
     sexradio<- isolate(input$sexradio)
@@ -824,19 +824,19 @@ server <- function(input, output, session) {
       
       dataframe[sample(nrow(dataframe)), ]
       if (cases > 10000) dataframe <- dataframe[sample(1:length(dataframe$result), 10000), ]
-
+      
       if (agelimitsvalid) dataframe <- dataframe[(dataframe$age >= agell) & (dataframe$age <= ageul), ]
-     
-        q10 <- quantile(dataframe$result, probs = 0.1)
-        q90 <- quantile(dataframe$result, probs = 0.9)
-        ylim.min <- q10 - (q90 - q10) / 1.3
-        ylim.max <- q90 + (q90 - q10) / 1.3
- 
-        pu_percent <- 2.39*(-0.25 + 100*(-1+exp(((log(reflim(dataframe$result)$limits[2])-log(reflim(dataframe$result)$limits[1]))/3.92)^2))^0.5)^0.5
-        pu_absolute <- pu_percent * median(dataframe$result) / 100
-    
+      
+      q10 <- quantile(dataframe$result, probs = 0.1)
+      q90 <- quantile(dataframe$result, probs = 0.9)
+      ylim.min <- q10 - (q90 - q10) / 1.3
+      ylim.max <- q90 + (q90 - q10) / 1.3
+      
+      pu_percent <- 2.39*(-0.25 + 100*(-1+exp(((log(reflim(dataframe$result)$limits[2])-log(reflim(dataframe$result)$limits[1]))/3.92)^2))^0.5)^0.5
+      pu_absolute <- pu_percent * median(dataframe$result) / 100
+      
       # Calculate number of digits for age with resulting 10^3 steps or groups.
-        agedigits <- 3 - floor(log10(max(dataframe$age)))
+      agedigits <- 3 - floor(log10(max(dataframe$age)))
       
       agegroups <- data.frame(from = seq(round(min(dataframe$age), agedigits), round(max(dataframe$age), agedigits), by=10^-agedigits)) %>%
         mutate(to = from + 10^-agedigits)
@@ -925,11 +925,11 @@ server <- function(input, output, session) {
           "</p>"
         )
       })
-      }
+    }
     
   })
-
-    
+  
+  
   # Start calculation
   observeEvent(input$calc, {
     if (input$boxplot$collapsed) updateBox("boxplot", action = "toggle")
@@ -946,7 +946,7 @@ server <- function(input, output, session) {
     if ("trimester" %in% colnames(dataframe)) trimesterCalc = isolate(input$trimesterCalc)
     if (all(dataframe$trimester==0,na.rm=T)) trimesterCalc = 0
     else dataframe = dataframe[dataframe$trimester == trimesterCalc ]
-  
+    
     if (sum(!is.na(dataframe$result))==0) {
       agell <- 0
       ageul <- 0
@@ -970,9 +970,10 @@ server <- function(input, output, session) {
     else {
       if (length(na.omit(dataframe$result)) < 2000) shinyalert("small sample size...", paste("The selected dataset contains only ", length(dataframe$result), " results.\nYou have been warned..."), type = "warning")
       if (length(na.omit(dataframe$result)) > 100000) shinyalert("large sample size...", paste("The selected dataset contains ", length(dataframe$result), " results.\nYou have been warned..."), type = "warning")
-    
+      
       methodradio <- isolate(input$methodradio)    
       if (methodradio == 'refiner') {
+        if(!"refineR" %in% .packages()) library(refineR)
         nbootstrap <- isolate(input$nbootstrap)
         modboxcox <- isolate(input$modboxcox)
         if (modboxcox) boxcoxmode <- "modBoxCox"
@@ -986,11 +987,12 @@ server <- function(input, output, session) {
         estimatedlimits.high <- getRI(resri)[2, 2]
         
         output$plot <- renderPlot({
-            plot(resri)
+          plot(resri)
           if (referencelimitsvalid) plotcomparisonlimits(getRI(resri)[1, 2], getRI(resri)[2, 2], referencelimits.low, referencelimits.high)
         })
       }
       else if (methodradio == 'tmc') {
+        source(paste0(base_path, "TMC.R"))        
         output$plot <- renderPlot({
           temptmc <- tmc(na.omit(dataframe$result))
           estimatedlimits.low <<- temptmc$RL1
@@ -1001,8 +1003,9 @@ server <- function(input, output, session) {
         })
       }
       else if (methodradio == 'tml') {
+        source(paste0(base_path, "TML.R"))        
         fasttml=raw_fasttml()
-     
+        
         if (quantile(dataframe$result, probs = 0.90) >= 1000) decimalcount <- 0
         else if (quantile(dataframe$result, probs = 0.90) >= 100) decimalcount <- 1
         else if (quantile(dataframe$result, probs = 0.90) >= 10) decimalcount <- 2
@@ -1013,7 +1016,7 @@ server <- function(input, output, session) {
         estimateright <- length(dataframe$result[dataframe$result > reflim(dataframe$result)$limits[2]])
         if (estimateright > estimateleft) pathright <- TRUE
         else pathright <- FALSE
-
+        
         
         output$plot <- renderPlot({
           temptml <- tml(na.omit(dataframe$result), pathright)
@@ -1025,6 +1028,7 @@ server <- function(input, output, session) {
         })
       }
       else if (methodradio == 'kosmic') {
+        if(!"tidykosmic" %in% .packages()) library(tidykosmic)
         resri <- kosmic(na.omit(dataframe$result), decimals = 1)
         estimatedlimits.low <- summary(resri)[1]
         estimatedlimits.high <- summary(resri)[3]
