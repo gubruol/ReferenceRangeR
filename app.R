@@ -680,7 +680,6 @@ server <- function(input, output, session) {
       dataframe <- dataframe_raw
       dataframe$trimester <- factor(rep(NA, nrow(dataframe)), levels = c(0, 1, 2, 3))
       dataframe$sex <- factor(dataframe$sex, levels = sexlist)
-      dataframe$trimester <- factor(dataframe$trimester, levels = c(0, 1, 2, 3))
     }
     
     # Re-render the table, keeping full editability
