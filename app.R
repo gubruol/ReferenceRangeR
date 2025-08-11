@@ -666,24 +666,31 @@ server <- function(input, output, session) {
   
   # Add trimester column
   observeEvent(input$pregnancy_button, {
-    dataframe = data.frame(result = rep(NA, tablesize), age = rep(NA, tablesize), sex = factor(rep(NA, tablesize), levels = sexlist), trimester = factor(rep(NA, tablesize), levels = c(0,1, 2, 3)))
-    dataframe_raw=raw_data()
-    dataframe$result <- c(dataframe_raw$result, rep(NA, tablesize)- length(dataframe_raw$result))[1:tablesize]
-    dataframe$age <- c(dataframe_raw$age, rep(NA, tablesize)- length(dataframe_raw$age))[1:tablesize]
-    dataframe$sex <- c(dataframe_raw$sex, rep(NA, tablesize)- length(dataframe_raw$sex))[1:tablesize]
-    dataframe$trimester == 0
-    updateNumericInput(session, "referencelimits.low", value = 0)
-    updateNumericInput(session, "referencelimits.high", value = 0)
-    updateNumericInput(session, "agell", value = "")
-    updateNumericInput(session, "ageul", value = "")
-    output$pregnancymode <- renderText({ '1' })
-    updateBox("boxtable", action = "update")
-    updateBox("strat_boxplot", action = "update")
-    updateBox("boxplot", action = "update")
-    output$table <- renderRHandsontable(rhandsontable(dataframe, width = '450', height = 550, stretchH = "all", rowHeaderWidth = 65) %>%
-                                          hot_col("result", validator = resultvalidator) %>%
-                                          hot_col("sex", allowInvalid = TRUE)
+    dataframe_raw <- hot_to_r(input$table)
+    
+    # If it's NULL or empty, start from scratch
+    if (is.null(dataframe_raw) || nrow(dataframe_raw) == 0) {
+      dataframe <- data.frame(
+        result = rep(NA, tablesize),
+        age = rep(NA, tablesize),
+        sex = factor(rep(NA, tablesize), levels = sexlist),
+        trimester = factor(rep(NA, tablesize), levels = c(0, 1, 2, 3))
+      )
+    } else {
+      dataframe <- dataframe_raw
+      dataframe$trimester <- factor(rep(NA, nrow(dataframe)), levels = c(0, 1, 2, 3))
+      dataframe$sex <- factor(dataframe$sex, levels = sexlist)
+      dataframe$trimester <- factor(dataframe$trimester, levels = c(0, 1, 2, 3))
+    }
+    
+    # Re-render the table, keeping full editability
+    output$table <- renderRHandsontable(
+      rhandsontable(dataframe, width = '450', height = 550, stretchH = "all", rowHeaderWidth = 65) %>%
+        hot_col("result", validator = resultvalidator) %>%
+        hot_col("sex", allowInvalid = TRUE) %>%
+        hot_col("trimester", type = "dropdown", source = c(0, 1, 2, 3))
     )
+    output$pregnancymode <- renderText({ '1' })
   })
   
   observeEvent(input$remove_pregnancy, {
