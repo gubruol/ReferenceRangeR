@@ -50,6 +50,7 @@ tablesize <- 200000
 input_sex=NULL
 dataframe = data.frame(result = rep(NA, tablesize), age = rep(NA, tablesize), sex = factor(rep(NA, tablesize), levels = sexlist))
 fasttml=NULL
+allow_lloq_values <- FALSE
 
 
 # Path for TMC and TML library
@@ -422,7 +423,7 @@ server <- function(input, output, session) {
   raw_data <- reactive({
     dataframe <- hot_to_r(req(input$table))
     if (is.null(dataframe)) return(dataframe1)
-    dataframe$result <- gsub("^<", "", dataframe$result) 
+    if (allow_lloq_values) dataframe$result <- gsub("^<", "", dataframe$result) 
     dataframe$result <- gsub(",", ".", dataframe$result, fixed = TRUE)
     dataframe$result <- as.numeric(dataframe$result)
     dataframe$age <- as.numeric(dataframe$age)
@@ -944,7 +945,10 @@ server <- function(input, output, session) {
     if (input$boxplot$collapsed) updateBox("boxplot", action = "toggle")
     if (!input$strat_boxplot$collapsed) updateBox("strat_boxplot", action = "toggle")
     if (!input$boxtable$collapsed) updateBox("boxtable", action = "toggle")
-    
+
+    methodradio <- isolate(input$methodradio)    
+    if (methodradio == 'tmc') allow_lloq_values = TRUE
+    else allow_lloq_values = FALSE
     dataframe = raw_data()
     
     sexradioCalc<- isolate(input$sexradioCalc)
@@ -980,7 +984,6 @@ server <- function(input, output, session) {
       if (length(na.omit(dataframe$result)) < 2000) shinyalert("small sample size...", paste("The selected dataset contains only ", length(dataframe$result), " results.\nYou have been warned..."), type = "warning")
       if (length(na.omit(dataframe$result)) > 100000) shinyalert("large sample size...", paste("The selected dataset contains ", length(dataframe$result), " results.\nYou have been warned..."), type = "warning")
       
-      methodradio <- isolate(input$methodradio)    
       if (methodradio == 'refiner') {
         if(!"refineR" %in% .packages()) library(refineR)
         nbootstrap <- isolate(input$nbootstrap)
