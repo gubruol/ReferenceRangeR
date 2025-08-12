@@ -422,7 +422,6 @@ server <- function(input, output, session) {
   raw_data <- reactive({
     dataframe <- hot_to_r(req(input$table))
     if (is.null(dataframe)) return(dataframe1)
-    dataframe$result <- gsub("^<", "", dataframe$result) 
     dataframe$result <- gsub(",", ".", dataframe$result, fixed = TRUE)
     dataframe$result <- as.numeric(dataframe$result)
     dataframe$age <- as.numeric(dataframe$age)
@@ -436,6 +435,22 @@ server <- function(input, output, session) {
     return(dataframe)
   })
   
+  raw_data_tmc <- reactive({
+    dataframe <- hot_to_r(req(input$table))
+    if (is.null(dataframe)) return(dataframe1)
+    dataframe$result <- gsub("^<", "", dataframe$result) 
+    dataframe$result <- gsub(",", ".", dataframe$result, fixed = TRUE)
+    dataframe$result <- as.numeric(dataframe$result)
+    dataframe$age <- as.numeric(dataframe$age)
+    dataframe <- dataframe[dataframe$result > 0 & !is.na(dataframe$result), ]
+    femalelist = c(femalelist, input$Init_female)
+    malelist = c(malelist,input$Init_male)
+    diverselist = c(diverselist,input$Init_diverse)
+    dataframe <- dataframe %>% mutate(sex = ifelse(sex %in% femalelist, 'F', ifelse(sex %in% malelist, 'M', ifelse(sex %in% diverselist, 'D', 'X'))))
+    if ("trimester" %in% colnames(dataframe)) dataframe$trimester = plyr::mapvalues(dataframe$trimester,c(""),0,warn_missing = FALSE)
+    if (input$remove_pregnancy) dataframe = dataframe[,-4]
+    return(dataframe)
+  })
   
   raw_fasttml <- reactive({
     fasttml = input$fasttml
@@ -945,7 +960,9 @@ server <- function(input, output, session) {
     if (!input$strat_boxplot$collapsed) updateBox("strat_boxplot", action = "toggle")
     if (!input$boxtable$collapsed) updateBox("boxtable", action = "toggle")
 
-    dataframe = raw_data()
+    methodradio <- isolate(input$methodradio)    
+    if (methodradio == 'tmc') dataframe = raw_data_tmc()
+    else dataframe = raw_data()
     
     sexradioCalc<- isolate(input$sexradioCalc)
     if (sexradioCalc == 'M') dataframe <- dataframe[dataframe$sex == 'M', ]
@@ -979,8 +996,6 @@ server <- function(input, output, session) {
     else {
       if (length(na.omit(dataframe$result)) < 2000) shinyalert("small sample size...", paste("The selected dataset contains only ", length(dataframe$result), " results.\nYou have been warned..."), type = "warning")
       if (length(na.omit(dataframe$result)) > 100000) shinyalert("large sample size...", paste("The selected dataset contains ", length(dataframe$result), " results.\nYou have been warned..."), type = "warning")
-
-      methodradio <- isolate(input$methodradio)    
 
       if (methodradio == 'refiner') {
         if(!"refineR" %in% .packages()) library(refineR)
