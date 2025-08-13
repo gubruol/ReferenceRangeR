@@ -797,7 +797,7 @@ server <- function(input, output, session) {
               else if (pvalue < 0.01) paste("<b style='color: red;'>Significant difference </b> (p<0.01, ", test_used, ")<br>", sep = "")
               else if (pvalue < 0.05) paste("<b style='color: red;'>Significant difference</b> (p=", pvalue, ", ", test_used, ")<br>", sep = "")
               else paste("<b style='color: #10D010;'>No significant difference</b> (p=", pvalue, ", ", test_used, ")<br>", sep = ""),
-              if (pvalue >= 0.0 && pvalue < 0.05) "<i style='font-size: 10px;'>For large samples, the Wilcoxon test may yield significance for negligible effects. Consider using a stricter α-level and report effect sizes to ensure practical relevance.</i>",
+              if (pvalue >= 0.0 && pvalue < 0.05) "<i style='font-size: 10px;'>For large samples, the Wilcoxon test may yield significance for negligible effects. Consider using a stricter alpha-level to ensure practical relevance.</i>",
               "<br><b>Max. deviation of the medians: </b> ",
               if (mediandiff > pu_percent) "<b style='color: red;'>"
               else if (mediandiff > (0.5 * pu_percent)) "<b style='color: orange;'>"
