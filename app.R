@@ -63,6 +63,8 @@ dataframe = data.frame(
   sex = factor(rep(NA, tablesize), levels = sexlist)
 )
 fasttml = NULL
+removed_less = NULL
+removed_0 = NULL
 
 
 # Path for TMC and TML library
@@ -564,7 +566,7 @@ server <- function(input, output, session) {
     if ("trimester" %in% colnames(dataframe))
       dataframe$trimester = plyr::mapvalues(dataframe$trimester, c(""), 0, warn_missing = FALSE)
     if (input$remove_pregnancy)
-      dataframe = dataframe[, -4]
+      dataframe = dataframe[,!names(dataframe) %in% "trimester"]
     return(dataframe)
   })
   
@@ -589,7 +591,7 @@ server <- function(input, output, session) {
     if ("trimester" %in% colnames(dataframe))
       dataframe$trimester = plyr::mapvalues(dataframe$trimester, c(""), 0, warn_missing = FALSE)
     if (input$remove_pregnancy)
-      dataframe = dataframe[, -4]
+      dataframe = dataframe[,!names(dataframe) %in% "trimester"]
     return(dataframe)
   })
   
@@ -603,7 +605,42 @@ server <- function(input, output, session) {
       fasttml == T
     return(fasttml)
   })
-  
+
+  raw_removed_less = reactive ({
+    dataframe <- hot_to_r(req(input$table))
+    if (is.null(dataframe)) samples_less = 0
+    else {
+      if (input$sexradioCalc == 'M') dataframe <- dataframe[dataframe$sex == 'M', ]
+      else if (input$sexradioCalc == 'F') dataframe <- dataframe[dataframe$sex == 'F', ]
+      else if (input$sexradioCalc == 'D') dataframe <- dataframe[dataframe$sex == 'D', ]
+      agelimitsvalid <- (input$ageul > 0 && (input$ageul > input$agell) && !is.na(input$agell) && !is.na(input$ageul))
+      if (agelimitsvalid) dataframe <- dataframe[(dataframe$age >= input$agell) & (dataframe$age <= input$ageul), ]
+      dataframe$result <- gsub(",", ".", dataframe$result, fixed = TRUE)
+      samples_all = sum(!is.na(dataframe$result))
+      dataframe$result <- as.numeric(dataframe$result)
+      samples_less = samples_all - sum(!is.na(dataframe$result))
+    }
+    return(samples_less)
+  })
+
+  raw_removed_0 = reactive ({
+    dataframe <- hot_to_r(req(input$table))
+    if (is.null(dataframe)) samples_0 = 0
+    else {
+      if (input$sexradioCalc == 'M') dataframe <- dataframe[dataframe$sex == 'M', ]
+      else if (input$sexradioCalc == 'F') dataframe <- dataframe[dataframe$sex == 'F', ]
+      else if (input$sexradioCalc == 'D') dataframe <- dataframe[dataframe$sex == 'D', ]
+      agelimitsvalid <- (input$ageul > 0 && (input$ageul > input$agell) && !is.na(input$agell) && !is.na(input$ageul))
+      if (agelimitsvalid) dataframe <- dataframe[(dataframe$age >= input$agell) & (dataframe$age <= input$ageul), ]
+      dataframe$result <- gsub("^<", "", dataframe$result)
+      dataframe$result <- gsub(",", ".", dataframe$result, fixed = TRUE)
+      samples_all = sum(!is.na(dataframe$result))
+      dataframe$result <- as.numeric(dataframe$result)
+      dataframe <- dataframe[dataframe$result > 0 & !is.na(dataframe$result), ]
+      samples_0 = (samples_all - sum(!is.na(dataframe$result)))
+    }
+    return(samples_0)
+  })
   
   # Set initial Output conditions
   
@@ -882,11 +919,11 @@ server <- function(input, output, session) {
         result = rep(NA, tablesize),
         age = rep(NA, tablesize),
         sex = factor(rep(NA, tablesize), levels = sexlist),
-        trimester = factor(rep(NA, tablesize), levels = c(0, 1, 2, 3))
+        trimester = factor(rep(NA, tablesize), levels = trimesterlist)
       )
     } else {
       dataframe <- dataframe_raw
-      dataframe$trimester <- factor(rep(NA, nrow(dataframe)), levels = c(0, 1, 2, 3))
+      dataframe$trimester <- factor(rep(NA, nrow(dataframe)), levels = trimesterlist)
       dataframe$sex <- factor(dataframe$sex, levels = sexlist)
     }
     
@@ -901,7 +938,7 @@ server <- function(input, output, session) {
       ) %>%
         hot_col("result", validator = resultvalidator) %>%
         hot_col("sex", allowInvalid = TRUE) %>%
-        hot_col("trimester", type = "dropdown", source = c(0, 1, 2, 3))
+        hot_col("trimester",allowInvalid = TRUE)
     )
     output$pregnancymode <- renderText({
       '1'
@@ -913,7 +950,7 @@ server <- function(input, output, session) {
     if (nrow(dataframe) == 0)
       dataframe = dataframe1
     else {
-      dataframe = dataframe[, -4]
+      dataframe = dataframe[, !names(dataframe) %in% "trimester"]
     }
     output$table <- renderRHandsontable(
       rhandsontable(
@@ -1338,10 +1375,16 @@ server <- function(input, output, session) {
       updateBox("boxtable", action = "toggle")
     
     methodradio <- isolate(input$methodradio)
-    if (methodradio == 'tmc')
+    if (methodradio == 'tmc') {
       dataframe = raw_data_tmc()
-    else
-      dataframe = raw_data()
+      removed_less = 0
+      removed_0 = raw_removed_0()
+    }
+    else {
+      dataframe = raw_data() 
+      removed_less = raw_removed_less()
+      removed_0 = raw_removed_0()
+    }
     
     sexradioCalc <- isolate(input$sexradioCalc)
     if (sexradioCalc == 'M')
@@ -1356,7 +1399,7 @@ server <- function(input, output, session) {
     if (all(dataframe$trimester == 0, na.rm = T))
       trimesterCalc = 0
     else
-      dataframe = dataframe[dataframe$trimester == trimesterCalc]
+      dataframe = dataframe[dataframe$trimester == trimesterCalc,]
     
     if (sum(!is.na(dataframe$result)) == 0) {
       agell <- 0
@@ -1557,10 +1600,13 @@ server <- function(input, output, session) {
           "<p style='font-size: 14px;'><b>Selected data:</b><br>",
           "n = ",
           length(na.omit(dataframe$result)),
+          if (removed_less > 0 | removed_0 > 0 ) paste ("<p style='font-size: 10px;line-height: 3px;'><b>Removed rows from dataset:</b>"),
+          if (removed_less > 0) paste("<p style='font-size: 10px;line-height: 3px;'>below LOQ n = </>",removed_less),
+          if (removed_0 > 0) paste("<p style='font-size: 10px;line-height: 3px;'>value is zero n = </>",removed_0), 
           if (agelimitsvalid)
-            paste("<br>age: from ", agell, " to ", ageul)
+            paste("<p style='font-size: 14px;'<br>age: from ", agell, " to ", ageul)
           else
-            paste("<br>age: no selection"),
+            paste("<p style='font-size: 14px;'<br>age: no selection"),
           "<br>sex: ",
           if (sexradioCalc == 'M')
             "male"
