@@ -901,7 +901,7 @@ server <- function(input, output, session) {
       ) %>%
         hot_col("result", validator = resultvalidator) %>%
         hot_col("sex", allowInvalid = TRUE) %>%
-        hot_col("trimester", type = "dropdown", source = c(0, 1, 2, 3))
+        hot_col("trimester", allowInvalid = TRUE)
     )
     output$pregnancymode <- renderText({
       '1'
@@ -1356,7 +1356,7 @@ server <- function(input, output, session) {
     if (all(dataframe$trimester == 0, na.rm = T))
       trimesterCalc = 0
     else
-      dataframe = dataframe[dataframe$trimester == trimesterCalc]
+      dataframe = dataframe[dataframe$trimester == trimesterCalc,]
     
     if (sum(!is.na(dataframe$result)) == 0) {
       agell <- 0
