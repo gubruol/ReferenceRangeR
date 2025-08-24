@@ -290,14 +290,12 @@ ui <-
       ),
       as.card_item(
         box(
-          title = actionLink(
-            "Data Input", 
-            inputId = "DI",
-            icon("menu-right", lib="glyphicon")),
+          title = actionLink(inputId= "DI",uiOutput("data_input_link")),
           id = "boxtable",
           width = 8,
           solidHeader = TRUE,
           collapsible = TRUE,
+          collapsed = FALSE,
           status = "primary",
           sidebar = boxSidebar(
             title = "Settings",
@@ -329,10 +327,7 @@ ui <-
       ),
       as.card_item(
         box(
-          title = actionLink(
-            "Visualization and Stratification", 
-            inputId = "SV",
-            icon("menu-right", lib="glyphicon")),
+          title = actionLink(inputId= "SV",uiOutput("strat_input_link")),
           id = "strat_boxplot",
           width = 12,
           solidHeader = TRUE,
@@ -387,10 +382,7 @@ ui <-
       ),
       as.card_item(
         box(
-          title = actionLink(
-            "Reference Interval", 
-            inputId = "RI",
-            icon("menu-right", lib="glyphicon")),
+          title = actionLink(inputId= "RI",uiOutput("calc_input_link")),
           id = "boxplot",
           width = 12,
           solidHeader = TRUE,
@@ -639,6 +631,23 @@ server <- function(input, output, session) {
     raw_fasttml()
   })
   outputOptions(output, "fasttml", suspendWhenHidden = FALSE)
+
+  #Ui visable open/close functionality 
+  
+  output$strat_input_link <- renderUI({
+    icon_choice = icon("menu-right", lib = "glyphicon")
+    actionLink(inputId = "SV", label = tagList(icon_choice,"Visualization and Stratification"))
+  })
+  
+  output$calc_input_link <- renderUI({
+    icon_choice = icon("menu-right", lib = "glyphicon")
+    actionLink(inputId = "RI", label = tagList(icon_choice,"Reference Interval"))
+  })
+  
+  output$data_input_link <- renderUI({
+    icon_choice = icon("menu-up", lib = "glyphicon")
+    actionLink( inputId = "DI", label = tagList(icon_choice,"Data Input"))
+  })
   
   # Input advanced mode
   observeEvent(input$advanced_button, {
@@ -657,32 +666,49 @@ server <- function(input, output, session) {
   
   # Input Observations oben/close boxes
   observeEvent(input$DI, {
-    if (input$boxtable$collapsed)
-      updateBox("boxtable", action = "toggle")
-    else
-      (updateBox("boxtable", action = "toggle"))
+    if (input$boxtable$collapsed) { 
+    updateBox("boxtable", action = "toggle")
+    icon_choice = icon("menu-up", lib = "glyphicon") 
+    } else {
+    updateBox("boxtable", action = "toggle")
+    icon_choice = icon("menu-right", lib = "glyphicon") 
+    }
     if (!input$boxplot$collapsed)
       updateBox("boxplot", action = "toggle")
     if (!input$strat_boxplot$collapsed)
       updateBox("strat_boxplot", action = "toggle")
+
+    output$data_input_link <- renderUI({
+     actionLink( inputId = "DI", label = tagList(icon_choice,"Data Input"))
+  })
   })
   
   observeEvent(input$SV, {
-    if (input$strat_boxplot$collapsed)
-      updateBox("strat_boxplot", action = "toggle")
-    else
-      (updateBox("strat_boxplot", action = "toggle"))
+    if (input$strat_boxplot$collapsed) {
+    updateBox("strat_boxplot", action = "toggle")
+    icon_choice = icon("menu-up", lib = "glyphicon") 
+    } else {
+    updateBox("strat_boxplot", action = "toggle")
+    icon_choice = icon("menu-right", lib = "glyphicon") 
+    }
     if (!input$boxplot$collapsed)
       updateBox("boxplot", action = "toggle")
     if (!input$boxtable$collapsed)
       updateBox("boxtable", action = "toggle")
+
+    output$strat_input_link <- renderUI({
+      actionLink(inputId = "SV", label = tagList(icon_choice,"Data Input"))  
+      })
   })
   
   observeEvent(input$RI, {
-    if (input$boxplot$collapsed)
-      updateBox("boxplot", action = "toggle")
-    else
-      (updateBox("boxplot", action = "toggle"))
+    if (input$boxplot$collapsed) {
+    updateBox("boxplot", action = "toggle")
+    icon_choice = icon("menu-up", lib = "glyphicon") 
+    } else {
+    updateBox("boxplot", action = "toggle")
+    icon_choice = icon("menu-right", lib = "glyphicon") 
+    }
     if (!input$strat_boxplot$collapsed)
       updateBox("strat_boxplot", action = "toggle")
     if (!input$boxtable$collapsed)
