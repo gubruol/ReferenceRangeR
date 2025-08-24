@@ -228,6 +228,9 @@ ui <-
             style = buttoncolors1,
             width = '100%'
           ),
+          actionLink(HTML(
+            "<div style='text-align:center;width:80%%;font-size:80%'><i>open settings</i></div>"
+          ), inputId="strat_settings"),
           br(),
           br(),
           actionButton(
@@ -236,6 +239,9 @@ ui <-
             style = buttoncolors1,
             width = '100%'
           ),
+          actionLink(HTML(
+            "<div style='text-align:center;width:80%%;font-size:80%'><i>open settings</i></div>"
+          ), inputId="calc_settings"),
           br(),
           div(
             style = "display: flex; justify-content: space-between;",
@@ -284,7 +290,10 @@ ui <-
       ),
       as.card_item(
         box(
-          title = actionLink("Data Input", inputId = "DI"),
+          title = actionLink(
+            "Data Input", 
+            inputId = "DI",
+            icon("menu-right", lib="glyphicon")),
           id = "boxtable",
           width = 8,
           solidHeader = TRUE,
@@ -320,7 +329,10 @@ ui <-
       ),
       as.card_item(
         box(
-          title = actionLink("Visualization and Stratification", inputId = "SV"),
+          title = actionLink(
+            "Visualization and Stratification", 
+            inputId = "SV",
+            icon("menu-right", lib="glyphicon")),
           id = "strat_boxplot",
           width = 12,
           solidHeader = TRUE,
@@ -375,7 +387,10 @@ ui <-
       ),
       as.card_item(
         box(
-          title = actionLink("Reference Interval", inputId = "RI"),
+          title = actionLink(
+            "Reference Interval", 
+            inputId = "RI",
+            icon("menu-right", lib="glyphicon")),
           id = "boxplot",
           width = 12,
           solidHeader = TRUE,
@@ -674,6 +689,27 @@ server <- function(input, output, session) {
       updateBox("boxtable", action = "toggle")
   })
   
+  observeEvent(input$strat_settings, {
+    if (input$strat_boxplot$collapsed)
+      updateBox("strat_boxplot", action = "toggle")
+    else
+      (updateBox("strat_boxplot", action = "toggle"))
+    if (!input$boxplot$collapsed)
+      updateBox("boxplot", action = "toggle")
+    if (!input$boxtable$collapsed)
+      updateBox("boxtable", action = "toggle")
+  })
+  
+  observeEvent(input$calc_settings, {
+    if (input$boxplot$collapsed)
+      updateBox("boxplot", action = "toggle")
+    else
+      (updateBox("boxplot", action = "toggle"))
+    if (!input$strat_boxplot$collapsed)
+      updateBox("strat_boxplot", action = "toggle")
+    if (!input$boxtable$collapsed)
+      updateBox("boxtable", action = "toggle")
+  })
   
   
   # Input Table
@@ -1036,7 +1072,7 @@ server <- function(input, output, session) {
           "<br>",
           if (dataremoved)
             "Groups with n<100 were removed<br>",
-          if (agelimitsvalid == T)
+          if (agelimitsvalid)
             paste("age: from ", agell, " to ", ageul)
           else
             "age: no selection",
