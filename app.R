@@ -718,8 +718,6 @@ server <- function(input, output, session) {
   observeEvent(input$strat_settings, {
     if (input$strat_boxplot$collapsed)
       updateBox("strat_boxplot", action = "toggle")
-    else
-      (updateBox("strat_boxplot", action = "toggle"))
     if (!input$boxplot$collapsed)
       updateBox("boxplot", action = "toggle")
     if (!input$boxtable$collapsed)
@@ -729,8 +727,6 @@ server <- function(input, output, session) {
   observeEvent(input$calc_settings, {
     if (input$boxplot$collapsed)
       updateBox("boxplot", action = "toggle")
-    else
-      (updateBox("boxplot", action = "toggle"))
     if (!input$strat_boxplot$collapsed)
       updateBox("strat_boxplot", action = "toggle")
     if (!input$boxtable$collapsed)
