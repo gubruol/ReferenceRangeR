@@ -713,6 +713,10 @@ server <- function(input, output, session) {
       updateBox("strat_boxplot", action = "toggle")
     if (!input$boxtable$collapsed)
       updateBox("boxtable", action = "toggle")
+
+     output$calc_input_link <- renderUI({
+      actionLink( inputId = "RI", label = tagList(icon_choice,"Data Input"))  
+    })
   })
   
   observeEvent(input$strat_settings, {
