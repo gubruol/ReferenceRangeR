@@ -697,7 +697,7 @@ server <- function(input, output, session) {
       updateBox("boxtable", action = "toggle")
 
     output$strat_input_link <- renderUI({
-      actionLink(inputId = "SV", label = tagList(icon_choice,"Data Input"))  
+      actionLink(inputId = "SV", label = tagList(icon_choice,"Visualization and Stratification"))  
       })
   })
   
@@ -715,7 +715,7 @@ server <- function(input, output, session) {
       updateBox("boxtable", action = "toggle")
 
      output$calc_input_link <- renderUI({
-      actionLink( inputId = "RI", label = tagList(icon_choice,"Data Input"))  
+      actionLink( inputId = "RI", label = tagList(icon_choice,"Reference Interval"))  
     })
   })
   
