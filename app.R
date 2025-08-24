@@ -228,6 +228,9 @@ ui <-
             style = buttoncolors1,
             width = '100%'
           ),
+          actionLink(HTML(
+            "<div style='text-align:center;width:80%%;font-size:80%'><i>open settings</i></div>"
+          ), inputId="strat_settings"),
           br(),
           br(),
           actionButton(
@@ -236,6 +239,9 @@ ui <-
             style = buttoncolors1,
             width = '100%'
           ),
+          actionLink(HTML(
+            "<div style='text-align:center;width:80%%;font-size:80%'><i>open settings</i></div>"
+          ), inputId="calc_settings"),
           br(),
           div(
             style = "display: flex; justify-content: space-between;",
@@ -284,11 +290,12 @@ ui <-
       ),
       as.card_item(
         box(
-          title = actionLink("Data Input", inputId = "DI"),
+          title = actionLink(inputId= "DI",uiOutput("data_input_link")),
           id = "boxtable",
           width = 8,
           solidHeader = TRUE,
           collapsible = TRUE,
+          collapsed = FALSE,
           status = "primary",
           sidebar = boxSidebar(
             title = "Settings",
@@ -320,7 +327,7 @@ ui <-
       ),
       as.card_item(
         box(
-          title = actionLink("Visualization and Stratification", inputId = "SV"),
+          title = actionLink(inputId= "SV",uiOutput("strat_input_link")),
           id = "strat_boxplot",
           width = 12,
           solidHeader = TRUE,
@@ -375,7 +382,7 @@ ui <-
       ),
       as.card_item(
         box(
-          title = actionLink("Reference Interval", inputId = "RI"),
+          title = actionLink(inputId= "RI",uiOutput("calc_input_link")),
           id = "boxplot",
           width = 12,
           solidHeader = TRUE,
@@ -624,6 +631,23 @@ server <- function(input, output, session) {
     raw_fasttml()
   })
   outputOptions(output, "fasttml", suspendWhenHidden = FALSE)
+
+  #Ui visable open/close functionality 
+  
+  output$strat_input_link <- renderUI({
+    icon_choice = icon("menu-right", lib = "glyphicon")
+    actionLink(inputId = "SV", label = tagList(icon_choice,"Visualization and Stratification"))
+  })
+  
+  output$calc_input_link <- renderUI({
+    icon_choice = icon("menu-right", lib = "glyphicon")
+    actionLink(inputId = "RI", label = tagList(icon_choice,"Reference Interval"))
+  })
+  
+  output$data_input_link <- renderUI({
+    icon_choice = icon("menu-up", lib = "glyphicon")
+    actionLink( inputId = "DI", label = tagList(icon_choice,"Data Input"))
+  })
   
   # Input advanced mode
   observeEvent(input$advanced_button, {
@@ -642,38 +666,106 @@ server <- function(input, output, session) {
   
   # Input Observations oben/close boxes
   observeEvent(input$DI, {
-    if (input$boxtable$collapsed)
-      updateBox("boxtable", action = "toggle")
-    else
-      (updateBox("boxtable", action = "toggle"))
+    if (input$boxtable$collapsed) { 
+    updateBox("boxtable", action = "toggle")
+    icon_choice = icon("menu-up", lib = "glyphicon") 
+    } else {
+    updateBox("boxtable", action = "toggle")
+    icon_choice = icon("menu-right", lib = "glyphicon") 
+    }
     if (!input$boxplot$collapsed)
       updateBox("boxplot", action = "toggle")
     if (!input$strat_boxplot$collapsed)
       updateBox("strat_boxplot", action = "toggle")
+
+    output$data_input_link <- renderUI({
+     actionLink( inputId = "DI", label = tagList(icon_choice,"Data Input"))
+  })
   })
   
   observeEvent(input$SV, {
-    if (input$strat_boxplot$collapsed)
-      updateBox("strat_boxplot", action = "toggle")
-    else
-      (updateBox("strat_boxplot", action = "toggle"))
+    if (input$strat_boxplot$collapsed) {
+    updateBox("strat_boxplot", action = "toggle")
+    icon_choice = icon("menu-up", lib = "glyphicon") 
+    } else {
+    updateBox("strat_boxplot", action = "toggle")
+    icon_choice = icon("menu-right", lib = "glyphicon") 
+    }
     if (!input$boxplot$collapsed)
       updateBox("boxplot", action = "toggle")
     if (!input$boxtable$collapsed)
       updateBox("boxtable", action = "toggle")
+
+    output$strat_input_link <- renderUI({
+      actionLink(inputId = "SV", label = tagList(icon_choice,"Data Input"))  
+      })
   })
   
   observeEvent(input$RI, {
-    if (input$boxplot$collapsed)
-      updateBox("boxplot", action = "toggle")
-    else
-      (updateBox("boxplot", action = "toggle"))
+    if (input$boxplot$collapsed) {
+    updateBox("boxplot", action = "toggle")
+    icon_choice = icon("menu-up", lib = "glyphicon") 
+    } else {
+    updateBox("boxplot", action = "toggle")
+    icon_choice = icon("menu-right", lib = "glyphicon") 
+    }
     if (!input$strat_boxplot$collapsed)
       updateBox("strat_boxplot", action = "toggle")
     if (!input$boxtable$collapsed)
       updateBox("boxtable", action = "toggle")
+
+     output$calc_input_link <- renderUI({
+      actionLink( inputId = "RI", label = tagList(icon_choice,"Data Input"))  
+    })
   })
   
+  observeEvent(input$strat_settings, {
+    if (input$strat_boxplot$collapsed) { 
+      updateBox("strat_boxplot", action = "toggle")
+      output$strat_input_link <- renderUI({
+        icon_choice = icon("menu-up", lib = "glyphicon") 
+        actionLink(inputId = "SV", label = tagList(icon_choice,"Visalization and Stratification"))
+      })
+    }
+    if (!input$boxplot$collapsed) {
+      updateBox("boxplot", action = "toggle")
+      output$calc_input_link <- renderUI({
+        icon_choice = icon("menu-right", lib = "glyphicon") 
+        actionLink(inputId = "RI", label = tagList(icon_choice,"Reference Interval"))
+      })
+    }
+    if (!input$boxtable$collapsed) { 
+      updateBox("boxtable", action = "toggle")
+      output$data_input_link <- renderUI({
+        icon_choice = icon("menu-right", lib = "glyphicon") 
+        actionLink( inputId = "DI", label = tagList(icon_choice,"Data Input"))
+      })
+    }
+  })
+  
+  observeEvent(input$calc_settings, {
+        if (!input$strat_boxplot$collapsed) { 
+      updateBox("strat_boxplot", action = "toggle")
+      output$strat_input_link <- renderUI({
+        icon_choice = icon("menu-right", lib = "glyphicon") 
+        actionLink(inputId = "SV", label = tagList(icon_choice,"Visalization and Stratification"))
+      })
+    }
+    if (input$boxplot$collapsed) {
+      updateBox("boxplot", action = "toggle")
+      output$calc_input_link <- renderUI({
+        icon_choice = icon("menu-up", lib = "glyphicon") 
+        actionLink(inputId = "RI", label = tagList(icon_choice,"Reference Interval"))
+      })
+    }
+    if (!input$boxtable$collapsed) { 
+      updateBox("boxtable", action = "toggle")
+      output$data_input_link <- renderUI({
+        icon_choice = icon("menu-right", lib = "glyphicon") 
+        actionLink( inputId = "DI", label = tagList(icon_choice,"Data Input"))
+      })
+    }
+  })
   
   
   # Input Table
@@ -933,12 +1025,27 @@ server <- function(input, output, session) {
   
   # Visualize data for sex differences
   observeEvent(input$sexbox, {
-    if (input$strat_boxplot$collapsed)
+       if (input$strat_boxplot$collapsed) { 
       updateBox("strat_boxplot", action = "toggle")
-    if (!input$boxplot$collapsed)
+      output$strat_input_link <- renderUI({
+        icon_choice = icon("menu-up", lib = "glyphicon") 
+        actionLink(inputId = "SV", label = tagList(icon_choice,"Visalization and Stratification"))
+      })
+    }
+    if (!input$boxplot$collapsed) {
       updateBox("boxplot", action = "toggle")
-    if (!input$boxtable$collapsed)
+      output$calc_input_link <- renderUI({
+        icon_choice = icon("menu-right", lib = "glyphicon") 
+        actionLink(inputId = "RI", label = tagList(icon_choice,"Reference Interval"))
+      })
+    }
+    if (!input$boxtable$collapsed) { 
       updateBox("boxtable", action = "toggle")
+      output$data_input_link <- renderUI({
+        icon_choice = icon("menu-right", lib = "glyphicon") 
+        actionLink( inputId = "DI", label = tagList(icon_choice,"Data Input"))
+      })
+    }
     
     dataframe = raw_data()
     
@@ -1036,7 +1143,7 @@ server <- function(input, output, session) {
           "<br>",
           if (dataremoved)
             "Groups with n<100 were removed<br>",
-          if (agelimitsvalid == T)
+          if (agelimitsvalid)
             paste("age: from ", agell, " to ", ageul)
           else
             "age: no selection",
@@ -1098,12 +1205,27 @@ server <- function(input, output, session) {
     if (!"qgam" %in% .packages())
       library(qgam)
     
-    if (input$strat_boxplot$collapsed)
+        if (input$strat_boxplot$collapsed) { 
       updateBox("strat_boxplot", action = "toggle")
-    if (!input$boxplot$collapsed)
+      output$strat_input_link <- renderUI({
+        icon_choice = icon("menu-up", lib = "glyphicon") 
+        actionLink(inputId = "SV", label = tagList(icon_choice,"Visalization and Stratification"))
+      })
+    }
+    if (!input$boxplot$collapsed) {
       updateBox("boxplot", action = "toggle")
-    if (!input$boxtable$collapsed)
+      output$calc_input_link <- renderUI({
+        icon_choice = icon("menu-right", lib = "glyphicon") 
+        actionLink(inputId = "RI", label = tagList(icon_choice,"Reference Interval"))
+      })
+    }
+    if (!input$boxtable$collapsed) { 
       updateBox("boxtable", action = "toggle")
+      output$data_input_link <- renderUI({
+        icon_choice = icon("menu-right", lib = "glyphicon") 
+        actionLink( inputId = "DI", label = tagList(icon_choice,"Data Input"))
+      })
+    }
     
     dataframe = raw_data()
     
@@ -1330,12 +1452,27 @@ server <- function(input, output, session) {
   
   # Start calculation
   observeEvent(input$calc, {
-    if (input$boxplot$collapsed)
-      updateBox("boxplot", action = "toggle")
-    if (!input$strat_boxplot$collapsed)
+    if (!input$strat_boxplot$collapsed) { 
       updateBox("strat_boxplot", action = "toggle")
-    if (!input$boxtable$collapsed)
+      output$strat_input_link <- renderUI({
+        icon_choice = icon("menu-right", lib = "glyphicon") 
+        actionLink(inputId = "SV", label = tagList(icon_choice,"Visalization and Stratification"))
+      })
+    }
+    if (input$boxplot$collapsed) {
+      updateBox("boxplot", action = "toggle")
+      output$calc_input_link <- renderUI({
+        icon_choice = icon("menu-up", lib = "glyphicon") 
+        actionLink(inputId = "RI", label = tagList(icon_choice,"Reference Interval"))
+      })
+    }
+    if (!input$boxtable$collapsed) { 
       updateBox("boxtable", action = "toggle")
+      output$data_input_link <- renderUI({
+        icon_choice = icon("menu-right", lib = "glyphicon") 
+        actionLink( inputId = "DI", label = tagList(icon_choice,"Data Input"))
+      })
+    }
     
     methodradio <- isolate(input$methodradio)
     if (methodradio == 'tmc')
