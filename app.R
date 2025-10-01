@@ -1649,15 +1649,25 @@ server <- function(input, output, session) {
         })
       }
       else if (methodradio == 'kosmic') {
-        if (!"tidykosmic" %in% .packages())
-          library(tidykosmic)
-        resri <- kosmic(na.omit(dataframe$result), decimals = 1)
-        estimatedlimits.low <- summary(resri)[1]
-        estimatedlimits.high <- summary(resri)[3]
-        output$plot <- renderPlot({
-          plot(resri)
-        })
-      }
+        if (!"tidykosmic" %in% .packages()) library(tidykosmic)
+        if (any((dataframe$result %% 1) > 0)) {
+          resri <- kosmic(na.omit(dataframe$result), decimals = 1)
+          estimatedlimits.low <- summary(resri)[1]
+          estimatedlimits.high <- summary(resri)[3]
+          output$plot <- renderPlot({
+            plot(resri)
+          })
+        }
+        else {
+          shinyalert(
+            "missing decimals...",
+            paste(
+              "kosmic/tidykosmic requires at least one decimal.\nYour data cannot be processed."
+            ),
+            type = "error"
+          )
+        }
+      } 
       else if (methodradio == 'reflimr') {
         estimatedlimits.low <- reflim(dataframe$result)$limits[1]
         estimatedlimits.high <- reflim(dataframe$result)$limits[2]
