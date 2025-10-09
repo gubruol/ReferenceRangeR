@@ -557,9 +557,9 @@ server <- function(input, output, session) {
     if (is.null(dataframe))
       return(dataframe1)
     dataframe$result <- gsub(",", ".", dataframe$result, fixed = TRUE)
-    # dataframe$result <- as.numeric(dataframe$result)
+    dataframe$result <- as.numeric(dataframe$result)
     dataframe$age <- as.numeric(dataframe$age)
-    # dataframe <- dataframe[dataframe$result > 0 &
+    dataframe <- dataframe[dataframe$result > 0 &
                              !is.na(dataframe$result), ]
     femalelist = c(femalelist, input$Init_female)
     malelist = c(malelist, input$Init_male)
@@ -582,10 +582,10 @@ server <- function(input, output, session) {
       return(dataframe1)
     dataframe$result <- gsub("^<", "", dataframe$result)
     dataframe$result <- gsub(",", ".", dataframe$result, fixed = TRUE)
-    dataframe$result <- as.numeric(dataframe$result)
+    # dataframe$result <- as.numeric(dataframe$result)
     dataframe$age <- as.numeric(dataframe$age)
-    dataframe <- dataframe[dataframe$result > 0 &
-                             !is.na(dataframe$result), ]
+    # dataframe <- dataframe[dataframe$result > 0 &
+    #                         !is.na(dataframe$result), ]
     femalelist = c(femalelist, input$Init_female)
     malelist = c(malelist, input$Init_male)
     diverselist = c(diverselist, input$Init_diverse)
