@@ -1600,7 +1600,6 @@ server <- function(input, output, session) {
         })
       }
       else if (methodradio == 'tmc') {
-        if (!"tseries" %in% .packages()) library(tseries)
         source(paste0(base_path, "TMC.settings.R"))
         source(paste0(base_path, "TMC.functions.R"))
         output$plot <- renderPlot({
