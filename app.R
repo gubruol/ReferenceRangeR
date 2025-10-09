@@ -580,7 +580,7 @@ server <- function(input, output, session) {
     dataframe <- hot_to_r(req(input$table))
     if (is.null(dataframe))
       return(dataframe1)
-    dataframe$result <- gsub("^<", "", dataframe$result)
+    # dataframe$result <- gsub("^<", "", dataframe$result)
     dataframe$result <- gsub(",", ".", dataframe$result, fixed = TRUE)
     # dataframe$result <- as.numeric(dataframe$result)
     dataframe$age <- as.numeric(dataframe$age)
