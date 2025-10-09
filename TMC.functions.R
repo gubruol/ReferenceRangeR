@@ -1245,10 +1245,10 @@ if (print.log.message) { cat("%%%   TMC_seg104_Analysis_qqw 500\n") }
                              l.fact, p.fact, r.fact, w.fact, 
                              opt.crit.only=FALSE,fastnull=fastnull)
           
-    sign <- 1.0 * (temp.tmc0$tab["diff"] <= 0)          
+    sign <- c(temp.tmc0$tab[ , "diff"] <= 0)
     #  @@@ 10.09.2025 runs.test now from tseries, has no argument 'exact'
     #  runstest <- runs.test(sign, exact=FALSE, alternative="two.sided")
-    runstest <- runs.test(sign, alternative="two.sided")
+    runstest <- runs.test(as.factor(sign), alternative="two.sided")
 
     #  p level for significance reduced because observations are not
     #  independent 
@@ -10088,3 +10088,4 @@ xx.pdf.PN <- function(x, EX, lambda,mue,sigma,fastnull=1.e-10)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #
 # vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
