@@ -9,12 +9,9 @@ library(ggplot2)
 library(kableExtra)
 library(knitr)
 library(MASS)
-# library(mgcv)
 library(modeest)
 library(msm)
 library(nlme)
-# library(qgam)
-# library(refineR)
 library(reflimR)
 library(rhandsontable)
 library(scales)
@@ -24,9 +21,13 @@ library(shinybusy)
 library(shinydashboard)
 library(shinydashboardPlus)
 library(shinyjs)
-library(snpar) # installation: "install.packages('devtools')" and "devtools::install_github('debinqiu/snpar')"
+library(snpar)
 library(stringr)
-# library(tidykosmic) # installation: "install.packages('devtools')" and "devtools::install_github('divinenephron/tidykosmic')"
+
+# Manual installation of additional libraries:
+# install.packages('devtools')
+# devtools::install_github('debinqiu/snpar')
+# devtools::install_github('divinenephron/tidykosmic')
 
 # Colors
 uoltheme <- create_theme(
@@ -556,9 +557,9 @@ server <- function(input, output, session) {
     if (is.null(dataframe))
       return(dataframe1)
     dataframe$result <- gsub(",", ".", dataframe$result, fixed = TRUE)
-    dataframe$result <- as.numeric(dataframe$result)
+    # dataframe$result <- as.numeric(dataframe$result)
     dataframe$age <- as.numeric(dataframe$age)
-    dataframe <- dataframe[dataframe$result > 0 &
+    # dataframe <- dataframe[dataframe$result > 0 &
                              !is.na(dataframe$result), ]
     femalelist = c(femalelist, input$Init_female)
     malelist = c(malelist, input$Init_male)
@@ -664,7 +665,7 @@ server <- function(input, output, session) {
   })
   
   
-  # Input Observations oben/close boxes
+  # Input Observations open/close boxes
   observeEvent(input$DI, {
     if (input$boxtable$collapsed) { 
     updateBox("boxtable", action = "toggle")
@@ -1599,7 +1600,8 @@ server <- function(input, output, session) {
         })
       }
       else if (methodradio == 'tmc') {
-        source(paste0(base_path, "TMC.R"))
+        source(paste0(base_path, "TMC.settings.R"))
+        source(paste0(base_path, "TMC.functions.R"))
         output$plot <- renderPlot({
           temptmc <- tmc(na.omit(dataframe$result))
           estimatedlimits.low <<- temptmc$RL1
