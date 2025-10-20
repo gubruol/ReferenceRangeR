@@ -1,141 +1,28 @@
-##################################################################
-# TMC - Reference limit estimator                              ###
-# Author: W. Wosniok                                           ###
-# https://www.degruyter.com/document/doi/10.1515/cclm-2018-1341/html
-# 08.05.2024 Slight modifications by G. Brandhorst             ###
-##################################################################
-
-
-### CHANGES FROM ORIGINAL FUNCTIONS ###
-#588: # win.graph()
-#1453: x.hist, xlabel, NULL, NULL, NULL,
-#1498: #savePlot(file=fig100.016.file, type=figtype)
-#1499: myplot <- recordPlot()
-#2181: if !eval.rep) { sink(file=outname.stra.txt,split=TRUE) }
-#6842: main=NULL,
-#6843: #
-#6844: # 
-#6845: sub=NULL, cex.sub=0.7)
-#7031: # savePlot(file=figA.file,type=figA.type)
-
-
-scale.fact <- 1
-x.lo.limit <- NA
-x.hi.limit <- NA
-use.oh <- NA
-use.dev <- NA
-ana.hour.min <- NA
-ana.minu.min <- NA
-ana.hour.max <- NA
-ana.minu.max <- NA
-print.log.message <- FALSE
-smooth.hist1 <- TRUE
-smooth.hist2 <- FALSE
-lambda.min <- 0
-lambda.max <- 1
-fastnull     <- 1.e-10
-fastnull.chi <- 0.1
-x.tr.prop.min <- 0.60
-x.tr.prop.max <- 0.95
-x.tr.prop.limits <- seq(x.tr.prop.min, x.tr.prop.max, length.out=5)
-x.tr.prop.ints.n <- length(x.tr.prop.limits) - 1
-l.fact <- 0.0
-p.fact <- 0.0  
-w.fact <- 1.0 
-path.tab.stra <- NA
-path.fig.stra <- NA
-figtype <- "bmp"
-gtab.list <- c("tmc") 
-gtab.list.n <- length(gtab.list)
-meth.list <- gtab.list
-meth.list.n <- length(meth.list)
-age.limits <- c(NA, NA)
-RL1.p <- 0.025
-RL2.p <- 0.975
-x.clip.type <- "as.specified"
-x.clip.by1 <- NA
-x.clip.by2 <- NA
-par.las <- 1
-par.tcl <- 0.5
-histcol    <- "lightgray"
-bordercol <- "black"
-tmccol      <- "darkgreen"
-difbordercol <- "red"
-difhistcol <- adjustcolor("red", alpha.f = 0.10)
-kdecol <- "black"
-nbs <-  0
-user <- "user"
-info.file <- NA
-r.start <- NA
-r.ende <- NA
-nrep <- r.ende - r.start + 1
-eval.rep <- !is.na(nrep)
-idx.fix <- NULL
-idx.est <- c(1, 2, 3)
-RunId <- NA
-n.per.bin.min  <- 10
-df.est <- 3
-df.con <- 1
-x.tr.bins.min <- df.est + df.con + 2
-kernel.n <- 4096
-bins.n.max <- 100
-bins.n.min <- df.est + df.con + 4
-red.limit <- 1000
-time.start <- Sys.time()
-lambda.seq <- c(0.0, 0.1, 1.0)
-prev.acc.lo <- -0.05
-prev.acc.hi <-  1.05
-alpha <- 0.05
-r.fact <- 100
-p.fit.min <- 0.20
-crit123456 <- TRUE
-crit6.p <- 0.05
-outname <- NA
-outname.stra <- NA
-sexlabel <- "sex"
-agelabel <- "age"
-x.unaffected.lo <- NA
-x.unaffected.hi <- NA
-plot.fig100.001 <- FALSE
-plot.fig100.002 <- FALSE
-plot.fig100.003 <- FALSE
-plot.fig100.004 <- FALSE
-plot.fig100.005 <- FALSE
-plot.fig100.006 <- FALSE
-plot.fig100.007 <- FALSE
-plot.fig100.008 <- FALSE
-plot.fig100.009 <- FALSE
-plot.fig100.010 <- FALSE
-plot.fig100.011 <- FALSE
-plot.fig100.012 <- FALSE
-plot.fig100.013 <- FALSE
-plot.fig100.014 <- FALSE
-plot.fig100.015 <- FALSE
-plot.fig100.016 <- TRUE
-plot.fig100.017 <- FALSE
-plot.fig108.010 <- FALSE
-irep <- 0
-iage <- 0
-igtab <- 0
-subset.type <- 0
-round.unit <- 0.1
-xlabel <- NULL
-detect.limits.max <- NA
-spalte.g <- NA
-lambda.gen <- NA
-x.n1 <- NA
-x.n14 <- NA
-iblock <- 0
-datafile <- NA
-infile <- NA
-tab.names <- c(NA,NA)
-options(encoding = "latin1")
-
+########################################################################
+# TMC - Truncated minimum chi-square approach                        ###
+# Author: W. Wosniok                                                 ###
+# https://www.degruyter.com/document/doi/10.1515/cclm-2018-1341/html ###
+########################################################################
 
 tmc <- function (x) {
 
+# Process non-numerical entries. See ProcessDL().  #  @@@ 16.09.2025
+x <- 
+vDL <- ProcessDL(x, s.fact, option=1)              #  @@@ 16.09.2025
+                                                   
+#  x may still contain invalid entries             #  @@@ 16.09.2025 
+
+x <- na.omit(as.numeric(vDL[["data"]]))            #  @@@ 16.09.2025 
+
+detect.limits.max <- vDL[["detect.limits.max"]]    #  @@@ 16.09.2025 
+    
+#  quantile() cannot handle <0.30
 q10 <- quantile(x, probs = 0.1)
 q90 <- quantile(x, probs = 0.9)
+
+# q10 <- quantile(D[ , "Value"], probs=0.1)
+# q90 <- quantile(D[ , "Value"], probs=0.9)
+
 x.clip.min <- q10 - (q90 - q10) / 1.3
 x.clip.max <- q90 + (q90 - q10) / 1.3
 
@@ -606,7 +493,11 @@ if (print.log.message) { cat("%%%   TMC_seg099_OpenWindows.R  Start\n") }
   { #  Plot is wanted
     if (!exists("fig100.016"))
     { #  Open graph new window
-#      win.graph()
+      plot.new() # r shiny does not work with win.graph()
+      # win.graph()        #  @@@ this line was deactivated - generates crash
+                         #   - who did and why? 
+                         #  activated 16.09.2025
+                         
       fig100.016 <- dev.cur()
     }
     fig100.016.file <- paste(path.fig.stra,outname.stra,"-F100.016.",
@@ -1354,8 +1245,10 @@ if (print.log.message) { cat("%%%   TMC_seg104_Analysis_qqw 500\n") }
                              l.fact, p.fact, r.fact, w.fact, 
                              opt.crit.only=FALSE,fastnull=fastnull)
           
-    sign <- 1.0 * (temp.tmc0$tab["diff"] <= 0)          
-    runstest <- runs.test(sign, exact=FALSE, alternative="two.sided")
+    sign <- c(temp.tmc0$tab[ , "diff"] <= 0)
+    #  @@@ 10.09.2025 runs.test now from tseries, has no argument 'exact'
+    #  runstest <- runs.test(sign, exact=FALSE, alternative="two.sided")
+    runstest <- runs.test(as.factor(sign), alternative="two.sided")
 
     #  p level for significance reduced because observations are not
     #  independent 
@@ -1468,6 +1361,9 @@ if (print.log.message) { cat("%%%   TMC_seg104_Analysis_qqw 500\n") }
 
       if (plot.fig100.016)
       { 
+
+cat("\n fig100.016 ", fig100.016, "\n")
+
         #  Plot result - basic part
         #  No plot file name, save is done here below
         fig100.016.lim <- PlotHistFit(fig100.016, NA, figtype, 
@@ -1517,7 +1413,8 @@ if (print.log.message) { cat("%%%   TMC_seg104_Analysis_qqw 500\n") }
         # -------------------------------------------------------------
         # Save tmc result figure
         #savePlot(file=fig100.016.file, type=figtype)
-        myplot <- recordPlot()
+         
+        myplot <- recordPlot()    # 
       }      #  if (plot.fig100.016)
 
       # ================================================================
@@ -10191,3 +10088,4 @@ xx.pdf.PN <- function(x, EX, lambda,mue,sigma,fastnull=1.e-10)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #
 # vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
