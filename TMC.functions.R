@@ -15,6 +15,9 @@ vDL <- ProcessDL(x, s.fact, option=1)              #  @@@ 16.09.2025
 x <- na.omit(as.numeric(vDL[["data"]]))            #  @@@ 16.09.2025 
 
 detect.limits.max <- vDL[["detect.limits.max"]]    #  @@@ 16.09.2025 
+
+#  TMC assumes x sorted by value                   #  @@@ 21.10.2025  
+x <- sort(x)                                       #  @@@ 21.10.2025
     
 #  quantile() cannot handle <0.30
 q10 <- quantile(x, probs = 0.1)
@@ -10088,4 +10091,5 @@ xx.pdf.PN <- function(x, EX, lambda,mue,sigma,fastnull=1.e-10)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #
 # vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
 
