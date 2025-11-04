@@ -1512,6 +1512,8 @@ server <- function(input, output, session) {
     
     referencelimits.low <- isolate(input$referencelimits.low)
     referencelimits.high <- isolate(input$referencelimits.high)
+    if (referencelimits.low == 0 && referencelimits.high >0) referencelimits.low = 0.01
+    
     referencelimitsvalid <- (
       referencelimits.high > 0 &&
         (referencelimits.high > referencelimits.low) &&
