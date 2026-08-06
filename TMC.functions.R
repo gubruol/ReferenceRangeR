@@ -2267,7 +2267,7 @@ if (print.log.message) { cat("%%%   TMC_seg100_Analysis  End\n") }
 
 
 #############################################################################
-return(list(myplot = myplot, RL1 = tab.tmc["x.RL1.tmc"], RL2 = tab.tmc["x.RL2.tmc"]))
+return(list(myplot = myplot, RL1 = tab.tmc["x.RL1.tmc"], RL2 = tab.tmc["x.RL2.tmc"], lambda = tab.tmc["lambda.tmc"]))
 }
 
 

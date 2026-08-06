@@ -1512,8 +1512,6 @@ server <- function(input, output, session) {
     
     referencelimits.low <- isolate(input$referencelimits.low)
     referencelimits.high <- isolate(input$referencelimits.high)
-    if (referencelimits.low == 0 && referencelimits.high >0) referencelimits.low = 0.01
-    
     referencelimitsvalid <- (
       referencelimits.high > 0 &&
         (referencelimits.high > referencelimits.low) &&
@@ -1583,12 +1581,8 @@ server <- function(input, output, session) {
             ")<br>",
             sep = ""
           )
-        skewness <- paste(
-          "</p><br><p style='font-size: 12px;'>Estimated skewness:",
-          round(skewness(na.omit(
-            dataframe$result
-          )), 2)
-        )
+        skewness <- paste("</p><p style='font-size: 12px;'>Estimated	&lambda;:",round(resri$Lambda,2))
+        
         estimatedlimits.low <- getRI(resri)[1, 2]
         estimatedlimits.high <- getRI(resri)[2, 2]
         
@@ -1609,6 +1603,7 @@ server <- function(input, output, session) {
           temptmc <- tmc(na.omit(dataframe$result))
           estimatedlimits.low <<- temptmc$RL1
           estimatedlimits.high <<- temptmc$RL2
+          skewness <<- paste("</p><p style='font-size: 12px;'>Estimated	&lambda;:",round(temptmc$lambda,2))
           replayPlot(temptmc$myplot)
           if (referencelimitsvalid)
             plotcomparisonlimits(temptmc$RL1,
@@ -1645,6 +1640,10 @@ server <- function(input, output, session) {
           temptml <- tml(na.omit(dataframe$result), pathright)
           estimatedlimits.low <<- temptml$DL25
           estimatedlimits.high <<- temptml$DL975
+          
+          
+          skewness <<- paste("</p><p style='font-size: 12px;'>Estimated	&lambda;:",temptml$lambda)
+          
           replayPlot(temptml$myplot)
           if (referencelimitsvalid)
             plotcomparisonlimits(temptml$DL25,
@@ -1676,6 +1675,11 @@ server <- function(input, output, session) {
       else if (methodradio == 'reflimr') {
         estimatedlimits.low <- reflim(dataframe$result)$limits[1]
         estimatedlimits.high <- reflim(dataframe$result)$limits[2]
+        if (reflim(dataframe$result)$lognormal)
+          skewness <- "</p><p style='font-size: 12px;'>Lognormal distribution assumed"
+        else
+          skewness <- "</p><p style='font-size: 12px;'>No lognormal distribution assumed"
+        
         if (referencelimitsvalid)
           output$plot <- renderPlot(reflim(
             dataframe$result,

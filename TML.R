@@ -605,7 +605,7 @@ abline(0,0)
 par(adj =0.5)
 par(op)
 myplot <- recordPlot()
-return(list(P=p,mu=mu,sig=sig,T2=T2,DL975=DL975,DL95=DL950,myplot=myplot,DL25=DL25))
+return(list(P=p,mu=mu,sig=sig,lambda=lam,T2=T2,DL975=DL975,DL95=DL950,myplot=myplot,DL25=DL25))
 }
 
 
@@ -639,7 +639,7 @@ pc1=0.025,pc2=0.05,PC1=0.975,PC2=0.95)
 res<-gr.all0(d=data,lam=lam,q1=q1,q2=q2,sig=sig,mu=mu,p=p,lam2=lam2,
 x01=x01,x02=x02,x12=x12,step0=step0,bwd=bw,over=over,er1=er1,nb=nb,
 sc1=sc1,c2=c2,c1=c1,com=com+1,labx=labx,low=low,high=high,main=main,pc1=pc1,pc2=pc2,PC1=PC1,PC2=PC2)
-return(list(P=res$P,mu=res$mu,sig=res$sig,T2=res$T2,DL975=res$DL975,DL95=res$DL95,myplot=res$myplot,DL25=res$DL25))
+return(list(P=res$P,mu=res$mu,sig=res$sig,lambda=res$lam,T2=res$T2,DL975=res$DL975,DL95=res$DL95,myplot=res$myplot,DL25=res$DL25))
 }
 
 
