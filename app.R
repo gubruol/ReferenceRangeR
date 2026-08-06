@@ -339,7 +339,7 @@ ui <-
             max_height = 700,
             tags$div(class = "layout-sidebar1"
                      , layout_sidebar(
-                       sidebar = sidebar(
+                       sidebar = sidebar(resizable = FALSE,
                          id = "sidebar_strat",
                          bg = "#003B73",
                          position = "left",
@@ -394,7 +394,7 @@ ui <-
             max_height = "700px",
             tags$div(class = "layout-sidebar2"
                      , layout_sidebar(
-                       sidebar = sidebar(
+                       sidebar = sidebar(resizable = FALSE,
                          id = "sidebar_ref",
                          bg = "#003B73",
                          fillable = T,
