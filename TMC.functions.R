@@ -15,6 +15,9 @@ vDL <- ProcessDL(x, s.fact, option=1)              #  @@@ 16.09.2025
 x <- na.omit(as.numeric(vDL[["data"]]))            #  @@@ 16.09.2025 
 
 detect.limits.max <- vDL[["detect.limits.max"]]    #  @@@ 16.09.2025 
+
+#  TMC assumes x sorted by value                   #  @@@ 21.10.2025  
+x <- sort(x)                                       #  @@@ 21.10.2025
     
 #  quantile() cannot handle <0.30
 q10 <- quantile(x, probs = 0.1)
@@ -1245,7 +1248,7 @@ if (print.log.message) { cat("%%%   TMC_seg104_Analysis_qqw 500\n") }
                              l.fact, p.fact, r.fact, w.fact, 
                              opt.crit.only=FALSE,fastnull=fastnull)
           
-    sign <- 1.0 * (temp.tmc0$tab["diff"] <= 0)          
+    sign <- c(temp.tmc0$tab[ , "diff"] <= 0)
     #  @@@ 10.09.2025 runs.test now from tseries, has no argument 'exact'
     #  runstest <- runs.test(sign, exact=FALSE, alternative="two.sided")
     runstest <- runs.test(as.factor(sign), alternative="two.sided")
@@ -10088,3 +10091,5 @@ xx.pdf.PN <- function(x, EX, lambda,mue,sigma,fastnull=1.e-10)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #
 # vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+
