@@ -941,7 +941,7 @@ big <- function(x) format(x, big.mark = ",", scientific = FALSE)
 ### UI Definition Start ########################################################
 
 ui <- page_navbar(
-  title = tagList(img(src = "rrr.svg", alt = ""), "ReferenceRangeR"),
+  title = tagList(img(src = "www/rrr.svg", alt = ""), "ReferenceRangeR"),
   id = "nav", theme = rrr_theme, header = rrr_head,
   navbar_options = navbar_options(underline = TRUE, collapsible = FALSE),
   fillable = FALSE,
