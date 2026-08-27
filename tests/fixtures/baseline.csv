@@ -1,0 +1,9 @@
+id;method;n;lower;upper
+demo_sex;sex;3000;0.309157349211279;0.6
+demo_drift;drift;3;56.2;68.6
+demo_refiner;refineR;3000;31.5249404322306;49.5850486216478
+demo_reflimr;reflimr;3000;31;47.7
+demo_kosmic;kosmic;3000;31.8060299845694;46.6458555922811
+demo_tmc;tmc;3000;31.707821264086;49.3402190680675
+demo_tml;tml;3000;31.8;49.14
+demo_tml_full;tml;3000;31.73;48.83
