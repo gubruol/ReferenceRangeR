@@ -807,7 +807,7 @@ big <- function(x) format(x, big.mark = ",", scientific = FALSE)
 
 
 ui <- page_navbar(
-  title = tagList(img(src = "rrr.webp", alt = ""), "ReferenceRangeR"),
+  title = tagList(img(src = "rrr.svg", alt = ""), "ReferenceRangeR"),
   id = "nav", theme = rrr_theme, header = rrr_head,
   navbar_options = navbar_options(underline = TRUE, collapsible = FALSE),
   fillable = FALSE,
