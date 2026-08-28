@@ -651,7 +651,7 @@ rrr_head <- tagList(
     .navbar-brand img { width: 50px; height: 50px;
                         object-fit: cover; margin-right: .55rem;
                         padding: 3px; background: var(--rrr-nav-row1-bg); box-sizing: border-box; }
-                        
+    .selectize-dropdown { z-index: 2000 !important; }
     .standard-text-light { color: var(--rrr-text-light) !important; font-weight: 375; font-size: .9rem;
                             letter-spacing: -0.02em; display: inline-flex; align-items: center; }
     .standard-text-green-bold { color: var(--rrr-green-text) !important; font-weight: 500; font-size: .9rem;
@@ -1068,24 +1068,26 @@ server <- function(input, output, session) {
   })
   
 
-  output$column_ui <- renderUI({
+output$column_ui <- renderUI({
     df <- raw()
     if (is.null(df)) return(NULL)
     g <- guessed(); cols <- names(df)
     optional <- function(id, label, sel)
-      selectInput(id, label, choices = c("(none)" = "", cols), selected = sel %||% "",
-                  width = "100%")
+      selectizeInput(id, label, choices = c("(none)" = "", cols), selected = sel %||% "",
+                     width = "100%", options = list(dropdownParent = "body"))
     div(
       card_body(padding = c(5, 10), gap = "0.25rem", fillable = FALSE, class = "px-2",
-        div(class = "standard-text-light","Adjust column selection if necessary"),
-         layout_columns(col_widths = c(4, 4, 4), fill = FALSE,
-                        selectInput("col_result", div(class = "standard-text-dark","Result"), choices = cols, selected = g$result,
-                                    width = "100%"),
-                        optional("col_age",div(class = "standard-text-dark", "Age"), g$age), optional("col_sex",div(class = "standard-text-dark", "Sex"), g$sex),
-                        conditionalPanel("input.advanced",
-                                         optional("col_trimester", div(class = "standard-text-dark","Trimester"), g$trimester))),
-         uiOutput("sex_label_ui")))
+                div(class = "standard-text-light","Adjust column selection if necessary"),
+                layout_columns(col_widths = c(4, 4, 4), fill = FALSE,
+                               selectizeInput("col_result", div(class = "standard-text-dark","Result"),
+                                              choices = cols, selected = g$result, width = "100%",
+                                              options = list(dropdownParent = "body")),
+                               optional("col_age",div(class = "standard-text-dark", "Age"), g$age), optional("col_sex",div(class = "standard-text-dark", "Sex"), g$sex),
+                               conditionalPanel("input.advanced",
+                                                optional("col_trimester", div(class = "standard-text-dark","Trimester"), g$trimester))),
+                uiOutput("sex_label_ui")))
   })
+
   
   output$welcome_ui <- renderUI({
     if (!is.null(raw())) return(NULL)
@@ -1136,13 +1138,18 @@ server <- function(input, output, session) {
                           paste(r$unknown_labels, collapse = ", "))
                 else "All unrecognised sex labels are assigned."),
             layout_columns(col_widths = c(6, 6), fill = FALSE,
-                           selectInput("lab_female",div(class = "standard-text-dark", "female"), choices = choices, multiple = TRUE,
-                                       selected = picked("lab_female")),
-                           selectInput("lab_male", div(class = "standard-text-dark","male"), choices = choices, multiple = TRUE,
-                                       selected = picked("lab_male"))),
+                           selectizeInput("lab_female", div(class = "standard-text-dark", "female"),
+                                          choices = choices, multiple = TRUE,
+                                          selected = picked("lab_female"),
+                                          options = list(dropdownParent = "body")),
+                           selectizeInput("lab_male", div(class = "standard-text-dark", "male"),
+                                          choices = choices, multiple = TRUE,
+                                          selected = picked("lab_male"),
+                                          options = list(dropdownParent = "body"))),
             actionButton("reset_sex_labels", "Reset labels",
                          class = "btn-outline-primary btn-sm"))
   })
+
   
   output$data_summary <- renderUI({
     r <- prepared()$report
