@@ -1,5 +1,3 @@
-# RRR v2.0 RC1 ...
-
 library(shiny)
 library(bslib)
 library(ggplot2)
