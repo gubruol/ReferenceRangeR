@@ -593,13 +593,14 @@ tier("app", suppressPackageStartupMessages({
                       col_trimester = "trimester")
     # a dropped tile must leave no empty grid cell behind, otherwise the unused
     # column stays alive and the remaining tiles stop short of the full width
-    cells <- function() {
-      m <- gregexpr("bslib-grid-item", output$data_summary$html, fixed = TRUE)[[1]]
-      if (identical(m[1], -1L)) 0L else length(m)
-    }
-    session$setInputs(advanced = FALSE)
-    eq("four tiles when the trimester one is dropped", cells(), 4L)
-    session$setInputs(advanced = TRUE)
+	count_matches <- function(pattern, x) {
+	  m <- gregexpr(pattern, x, fixed = TRUE)[[1]]
+	  if (identical(m[1], -1L)) 0L else length(m)
+	}
+	cells <- function() count_matches("rrr-tile", output$data_summary$html)
+	session$setInputs(advanced = FALSE)
+	eq("four tiles when the trimester one is dropped", cells(), 4L)
+	session$setInputs(advanced = TRUE)
     eq("five tiles in advanced mode", cells(), 5L)
   })
 
