@@ -680,7 +680,7 @@ rrr_head <- tagList(
     .rrr-nav-row2 {
       flex: 0 0 100%; display: flex; align-items: center;
       background: var(--rrr-nav-row2-bg); min-height: var(--rrr-nav-row2-h);
-      padding: 0 1rem; border-top: 1px solid var(--rrr-line); }
+      padding: 0 1rem; }
     .rrr-nav-row2 .navbar-collapse { display: flex !important; padding: 0;
                                      flex: 0 0 auto !important; }
     .rrr-nav-row2 .rrr-nav-spacer { flex: 1 1 auto; }
