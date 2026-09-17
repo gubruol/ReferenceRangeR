@@ -173,6 +173,14 @@ CORE <- quote({
   quiet_reflim <- function(values, ...) tryCatch(
     reflimR::reflim(stats::na.omit(values), plot.it = FALSE, print.n = FALSE, ...),
     error = function(e) NULL, warning = function(w) NULL)
+
+  data_decimals <- function(values, max_decimals = 4L) {
+    v <- stats::na.omit(values)
+    if (!length(v)) return(0L)
+    txt <- format(v, scientific = FALSE, trim = TRUE, drop0trailing = TRUE)
+    dec <- ifelse(grepl(".", txt, fixed = TRUE), nchar(sub("^[^.]*\\.", "", txt)), 0L)
+    as.integer(max(0L, min(max_decimals, max(dec))))
+  }
   
   estimate_pu_percent <- function(values, reflim_result = NULL) {
     rl <- reflim_result %||% quiet_reflim(values)
@@ -296,12 +304,13 @@ CORE <- quote({
       
     } else if (method == "kosmic") {
       need_package("tidykosmic", "use the kosmic method")
-      if (!any((values %% 1) > 0)) return(list(ok = FALSE, n = n, method = method, message = paste(
-        "kosmic needs results with at least one decimal place.",
-        "The selected data are all whole numbers.")))
-      fit <- tidykosmic::kosmic(values, decimals = 1)
+      decimals <- data_decimals(values)
+      fit <- tidykosmic::kosmic(values, decimals = decimals)
       s <- summary(fit)
       out$limits <- unname(c(s[1], s[3])); out$plot <- record_plot(plot(fit))
+      out$decimals <- decimals
+      out$note <- sprintf("Resolution used: %d decimal place%s (from data)",
+                          decimals, if (decimals == 1L) "" else "s")
       
     } else if (method == "reflimr") {
       caught <- new.env(parent = emptyenv())
