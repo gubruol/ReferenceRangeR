@@ -297,7 +297,7 @@ CORE <- quote({
       path_right <- is.null(rl) || sum(v > rl$limits[2]) > sum(v < rl$limits[1])
       res <- with_method_device({
         load_method_scripts("TML.R", base_path, TML_PACKAGES)
-        tml(v, path_right)
+        tml(v, path_right, dec.num = decimals)
       })
       out$limits <- unname(c(res$DL25, res$DL975)); out$lambda <- unname(res$lambda)
       out$plot <- res$myplot
