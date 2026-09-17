@@ -305,6 +305,7 @@ CORE <- quote({
     } else if (method == "kosmic") {
       need_package("tidykosmic", "use the kosmic method")
       decimals <- data_decimals(values)
+      if (decimals > 1) decimals = 1
       fit <- tidykosmic::kosmic(values, decimals = decimals)
       s <- summary(fit)
       out$limits <- unname(c(s[1], s[3])); out$plot <- record_plot(plot(fit))
