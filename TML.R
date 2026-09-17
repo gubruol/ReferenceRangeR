@@ -1088,12 +1088,15 @@ Diff=Diff,cov=-iHess,differential=differential))
 
 
 
-tml <- function(d, pathright) {
+tml <- function(d, pathright, dec.num = NULL) {
   
   ### variables from parameters.txt
   Q1 <- 0.10
   Q2 <- 0.90
-  dec.num <- 1
+  if (is.null(dec.num)) {
+    dec.num <- max(0, min(4, max(nchar(sub("^[^.]*\\.?", "", 
+                   format(d, scientific = FALSE, trim = TRUE, drop0trailing = TRUE))))))
+  }
   minsize <- 40
   dif1 <- 1
   nen <- 1
