@@ -304,8 +304,10 @@ CORE <- quote({
       
     } else if (method == "kosmic") {
       need_package("tidykosmic", "use the kosmic method")
-      decimals <- data_decimals(values)
-      if (decimals > 1) decimals = 1
+      decimals <- min(1L, data_decimals(values))
+      k <- floor(values * 10^decimals + 0.5); cnt <- tabulate(k - min(k) + 1)
+      if (length(cnt) < 6 || max(cnt[-(1:2)]) <= cnt[1]) return(list(ok = FALSE, n = n, method = method,
+        message = "kosmic cannot be used: too few distinct values, or the most frequent result is (next to) the lowest one."))
       fit <- tidykosmic::kosmic(values, decimals = decimals)
       s <- summary(fit)
       out$limits <- unname(c(s[1], s[3])); out$plot <- record_plot(plot(fit))
