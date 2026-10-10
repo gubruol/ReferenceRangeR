@@ -1030,7 +1030,7 @@ ui <- page_navbar(
                                                  div(class = "form-text mb-2", "0 = no confidence intervals (fastest)")),
                                 conditionalPanel("input.method == 'tml' && input.advanced",
                                                  checkboxInput("fast_tml", "Fast mode (3 significant figures)", value = TRUE)),
-                                checkboxInput("compare", div(class = "standard-text-dark","Compare with known limits"), value = FALSE),
+                                checkboxInput("compare", div(class = "standard-text-dark","Compare to known limits"), value = FALSE),
                                 conditionalPanel("input.compare",
                                                  div(class = "rrr-field",
                                                      layout_columns(col_widths = c(6, 6), gap = "0.4rem", fill = FALSE,
