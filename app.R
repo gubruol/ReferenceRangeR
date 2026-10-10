@@ -31,7 +31,8 @@ CORE <- quote({
     kosmic  = "https://www.nature.com/articles/s41598-020-58749-2",
     reflimr = "https://doi.org/10.1515/labmed-2023-0042")
   RRR_GITHUB     <- "https://github.com/gubruol/ReferenceRangeR"
-  RRR_HELP       <- "help.pdf"   # served from www/
+  RRR_HELP       <- "help.pdf"
+  RRR_DS         <- "https://uol.de/datenschutzerklaerung"
   RRR_DISCLAIMER <- "https://kc.uol.de/disclaimer/"
   RRR_REMOTE     <- "https://raw.githubusercontent.com/gubruol/ReferenceRangeR/refs/heads/main/"
   TML_PACKAGES <- c("MASS", "nlme", "msm", "geoR", "modeest", "admisc", "date")
@@ -1048,7 +1049,8 @@ ui <- page_navbar(
   nav_menu(title = icon("circle-question"), align = "right",
            nav_item(a("Help", href = RRR_HELP, target = "_blank")),
            nav_item(a("GitHub", href = RRR_GITHUB, target = "_blank")),
-           nav_item(a("Disclaimer", href = RRR_DISCLAIMER, target = "_blank")))
+           nav_item(a("Datenschutz", href = RRR_DS, target = "_blank")),
+           nav_item(a("Impressum", href = RRR_DISCLAIMER, target = "_blank")))
 )
 
 ### Server Definition Start ########################################################
