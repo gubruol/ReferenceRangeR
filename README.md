@@ -23,3 +23,6 @@ This will download the latest Docker image und map the container to local port 8
 
 ### Access the App
 Open you Browser an access the tool at http://localhost
+
+#### Licence
+The MIT License in this repository does not apply to the UMO logo (umo.svg)
