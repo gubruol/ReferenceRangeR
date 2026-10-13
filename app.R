@@ -572,7 +572,7 @@ CORE <- quote({
       pU <- reflimR::permissible_uncertainty(cmp[1], cmp[2])
       verdict <- function(x, lo, hi) if (isTRUE(x > lo && x < hi))
         "within permissible uncertainty" else "outside permissible uncertainty"
-      section("Comparison with known limits", COL2)
+      section("Comparison to known limits", COL2)
       field("Known limits", sprintf("%s – %s", format_report_limit(cmp[1]),
                                     format_report_limit(cmp[2])), COL2, 0.955)
       field("Lower limit", verdict(result$limits[1], pU[1], pU[2]), COL2, 0.955)
