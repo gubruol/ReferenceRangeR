@@ -283,7 +283,7 @@ CORE <- quote({
       
     } else if (method == "tmc") {
       res <- with_method_device({
-        load_method_scripts(c("TMC.settings.R", "TMC.functions.R"), base_path, TMC_PACKAGES)
+        load_method_scripts("TMC13mod.R", base_path, TMC_PACKAGES)
         tmc(chr)
       })
       out$limits <- unname(c(res$RL1, res$RL2)); out$lambda <- unname(res$lambda)
